@@ -1,0 +1,33 @@
+{
+  "Lua.diagnostics.globals": [
+    "lib",
+    "fx_version",
+    "game",
+    "lua54",
+    "name",
+    "description",
+    "version",
+    "author",
+    "store",
+    "website",
+    "shared_scripts",
+    "client_scripts",
+    "server_scripts",
+    "files",
+    "ui_page",
+    "dependencies",
+    "escrow_ignore",
+    "_debug",
+    "_error",
+    "resName",
+    "config",
+    "ui",
+    "_info",
+    "utils",
+    "cache",
+    "pname",
+    "discordCfg",
+    "MySQL",
+    "_warn"
+  ]
+}

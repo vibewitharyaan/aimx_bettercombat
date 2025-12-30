@@ -1,0 +1,40 @@
+{
+  "name": "eh_fivem_template",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "vite",
+    "build": "vite build",
+    "dev": "vite",
+    "lint": "biome lint .",
+    "format": "biome format . --write",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@mantine/core": "^8.3.9",
+    "@mantine/hooks": "^8.3.9",
+    "axios": "^1.6.7",
+    "clsx": "^2.1.1",
+    "dompurify": "^3.2.6",
+    "motion": "^12.0.0",
+    "postcss": "^8.5.5",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "tailwind-merge": "^3.3.0",
+    "tailwindcss": "3.4.17",
+    "zustand": "^5.0.6"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "1.9.4",
+    "@types/node": "^20.11.17",
+    "@types/react": "^18.2.55",
+    "@types/react-dom": "^18.2.19",
+    "@vitejs/plugin-react": "^4.2.1",
+    "autoprefixer": "10.4.21",
+    "sharp": "^0.34.5",
+    "typescript": "^5.3.3",
+    "vite": "^5.1.1",
+    "vite-plugin-checker": "^0.6.4"
+  }
+}
