@@ -1,52 +1,48 @@
+-- [UI MODULE] --
+
 ui = {}
+ui.loaded = false
 
-local NUI_SEND_DEBUG_FILTER = {
-    ["init"] = true,
-}
 
-local NUI_DEBUG_FILTER = {
-    ["uiLoaded"] = true,
-}
+-- [NUI COMMUNICATION] --
+
+local NUI_DEBUG = { init = true, uiLoaded = true }
 
 function ui.sendMsg(action, data)
-    local message = { action = action }
+    local msg = { action = action }
+    if data then msg.data = data end
+    SendNUIMessage(msg)
 
-    if data ~= nil then
-        message.data = data
-    end
-
-    SendNUIMessage(message)
-
-    if not NUI_SEND_DEBUG_FILTER[tostring(action)] then
-        _debug("[NUI Message] Action: %s | Data: %s", action, json.encode(data))
+    if not NUI_DEBUG[action] then
+        _debug("[NUI-MSG] Action: %s | Data: %s", action, json.encode(data))
     end
 end
 
 function ui.focus(focus, cursor)
-    cursor = cursor == nil and focus or cursor
-    SetNuiFocus(focus, cursor)
+    SetNuiFocus(focus, cursor == nil and focus or cursor)
 end
 
 function ui.registerCb(name, handler)
     RegisterNUICallback(name, function(data, cb)
         local ok, result = pcall(handler, data)
         if not ok then
-            _error("[NUI Callback] Failed: %s | Error: %s", name, tostring(result))
+            _error("[NUI-CB] Failed: %s | Error: %s", name, tostring(result))
             cb({ ok = false, error = "Internal error" })
             return
         end
 
-        if not NUI_DEBUG_FILTER[tostring(name)] then
-            if result ~= nil then
-                _debug("[NUI Callback] %s | Data: %s | Result: %s", name, json.encode(data), json.encode(result))
-            else
-                _debug("[NUI Callback] %s | Data: %s", name, json.encode(data))
-            end
+        if not NUI_DEBUG[name] then
+            local msg = "[NUI-CB] " .. name
+            if data then msg = msg .. " | Data: " .. json.encode(data) end
+            if result then msg = msg .. " | Result: " .. json.encode(result) end
+            _debug(msg)
         end
 
         cb({ ok = true, data = result })
     end)
 end
+
+-- [UI STATE] --
 
 local function initLocales(cb)
     local locales = lib.getLocales()
@@ -89,14 +85,9 @@ ui.registerCb("uiLoaded", function()
     end)
 end)
 
-CreateThread(function()
-    Wait(1000)
-    ui.sendMsg("app:boot", {})
-end)
 
-AddEventHandler("onResourceStop", function(currentResource)
-    if currentResource ~= resName then
-        return
-    end
-    ui.focus(false, false)
+-- [CLEANUP] --
+
+AddEventHandler("onResourceStop", function(resource)
+    if resource == resName then ui.focus(false, false) end
 end)
