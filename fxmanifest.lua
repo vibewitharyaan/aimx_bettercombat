@@ -22,9 +22,6 @@ client_scripts {
 }
 
 server_scripts {
-    -- "@oxmysql/lib/MySQL.lua", -- Optional if use mysql i.e. db
-    "config/discord.lua",
-    "core/version.lua",
     "core/server/**/*.lua"
 }
 
