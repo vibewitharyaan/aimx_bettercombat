@@ -5,7 +5,7 @@
 -- Extensible architecture for future granularity (fingers, hands, etc.)
 -- ============================================================================
 
-BoneMap = {}
+bonemap = {}
 
 -- ============================================================================
 -- BONE GROUP DEFINITIONS
@@ -152,28 +152,28 @@ end
 ---Get bone group from bone ID (client-side usage with GET_PED_LAST_DAMAGE_BONE)
 ---@param boneId number
 ---@return string|nil groupName
-function BoneMap.GetGroupFromBone(boneId)
+function bonemap.getGroupFromBone(boneId)
     return boneIdToGroup[boneId]
 end
 
 ---Get bone group from component ID (server-side usage with weaponDamageEvent)
 ---@param componentId number
 ---@return string|nil groupName
-function BoneMap.GetGroupFromComponent(componentId)
+function bonemap.getGroupFromComponent(componentId)
     return componentToGroup[componentId]
 end
 
 ---Get all bones for a group
 ---@param groupName string
 ---@return number[]|nil
-function BoneMap.GetBonesForGroup(groupName)
+function bonemap.getBonesForGroup(groupName)
     local group = boneGroups[groupName]
     return group and group.bones or nil
 end
 
 ---Get all bone groups
 ---@return string[]
-function BoneMap.GetAllGroups()
+function bonemap.getAllGroups()
     local groups = {}
     for name in pairs(boneGroups) do
         table.insert(groups, name)
@@ -185,7 +185,7 @@ end
 ---@param name string
 ---@param bones number[]
 ---@param description string
-function BoneMap.RegisterGroup(name, bones, description)
+function bonemap.registerGroup(name, bones, description)
     if boneGroups[name] then
         error(('Bone group "%s" already exists'):format(name))
     end
@@ -201,7 +201,7 @@ function BoneMap.RegisterGroup(name, bones, description)
         boneIdToGroup[boneId] = name
     end
     
-    if Config.Debug.enabled then
+    if config.debug.enabled then
         print(('[Weapon Framework] Registered bone group: %s (%d bones)'):format(name, #bones))
     end
 end
@@ -209,14 +209,14 @@ end
 ---Map component ID to bone group (for custom mappings)
 ---@param componentId number
 ---@param groupName string
-function BoneMap.MapComponent(componentId, groupName)
+function bonemap.mapComponent(componentId, groupName)
     if not boneGroups[groupName] then
         error(('Bone group "%s" does not exist'):format(groupName))
     end
     
     componentToGroup[componentId] = groupName
     
-    if Config.Debug.enabled then
+    if config.debug.enabled then
         print(('[Weapon Framework] Mapped component %d -> %s'):format(componentId, groupName))
     end
 end
@@ -224,7 +224,7 @@ end
 ---Get human-readable bone group name
 ---@param groupName string
 ---@return string
-function BoneMap.GetGroupDescription(groupName)
+function bonemap.getGroupDescription(groupName)
     local group = boneGroups[groupName]
     return group and group.description or 'Unknown'
 end
@@ -232,14 +232,14 @@ end
 ---Check if bone ID exists in any group
 ---@param boneId number
 ---@return boolean
-function BoneMap.IsValidBone(boneId)
+function bonemap.isValidBone(boneId)
     return boneIdToGroup[boneId] ~= nil
 end
 
 ---Check if component ID exists in mapping
 ---@param componentId number
 ---@return boolean
-function BoneMap.IsValidComponent(componentId)
+function bonemap.isValidComponent(componentId)
     return componentToGroup[componentId] ~= nil
 end
 
@@ -253,17 +253,17 @@ end
 ---@param boneOrComponentId number
 ---@param isComponent boolean
 ---@return string groupName (defaults to 'torso' if unknown)
-function BoneMap.GetGroupWithFallback(boneOrComponentId, isComponent)
+function bonemap.getGroupWithFallback(boneOrComponentId, isComponent)
     local group = isComponent 
-        and BoneMap.GetGroupFromComponent(boneOrComponentId)
-        or BoneMap.GetGroupFromBone(boneOrComponentId)
+        and bonemap.getGroupFromComponent(boneOrComponentId)
+        or bonemap.getGroupFromBone(boneOrComponentId)
     
     if group then
         return group
     end
     
     -- Fallback: treat unknown bones as torso hits (safest assumption)
-    if Config.Debug.enabled then
+    if config.debug.enabled then
         print(('[Weapon Framework] Unknown %s ID: %d (defaulting to torso)'):format(
             isComponent and 'component' or 'bone',
             boneOrComponentId
@@ -277,9 +277,9 @@ end
 -- DEBUGGING UTILITIES
 -- ============================================================================
 
-if Config.Debug.enabled then
+if config.debug.enabled then
     ---Print all bone mappings (debug only)
-    function BoneMap.PrintMappings()
+    function bonemap.printMappings()
         print('=== BONE GROUP MAPPINGS ===')
         for groupName, group in pairs(boneGroups) do
             print(('Group: %s (%s)'):format(groupName, group.description))

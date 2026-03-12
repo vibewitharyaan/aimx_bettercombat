@@ -39,9 +39,9 @@ lib.onCache('weapon', function(weaponHash, oldWeapon)
     if weaponHash then
         RecoilSystem.RecalculateRecoil()
         
-        if Config.Debug.enabled then
-            local weapon = Config.GetWeapon(weaponHash)
-            print(('[Recoil] Weapon changed: %s'):format(weapon and weapon.name or 'Unknown'))
+        if config.debug.enabled then
+            local weapon = config.getWeapon(weaponHash)
+            _debug(('[Recoil] Weapon changed: %s'):format(weapon and weapon.name or 'Unknown'))
         end
     else
         -- Weapon holstered
@@ -60,8 +60,8 @@ lib.onCache('vehicle', function(vehicle, oldVehicle)
         RecoilSystem.RecalculateRecoil()
     end
     
-    if Config.Debug.enabled then
-        print(('[Recoil] Vehicle state: %s'):format(state.inVehicle and 'in vehicle' or 'on foot'))
+    if config.debug.enabled then
+        _debug(('[Recoil] Vehicle state: %s'):format(state.inVehicle and 'in vehicle' or 'on foot'))
     end
 end)
 
@@ -79,11 +79,11 @@ function RecoilSystem.RecalculateRecoil()
         return
     end
     
-    local weapon = Config.GetWeapon(state.currentWeapon)
+    local weapon = config.getWeapon(state.currentWeapon)
     if not weapon then return end
     
     -- Calculate base recoil with preset
-    state.effectiveRecoil = Presets.CalculateRecoil(
+    state.effectiveRecoil = presets.calculateRecoil(
         state.currentWeapon,
         state.activePreset,
         state.inVehicle
@@ -95,7 +95,7 @@ function RecoilSystem.RecalculateRecoil()
     local horzMult = preset.recoil.globalMultiplier
     
     if state.inVehicle then
-        local driveByMult = Config.GetDriveByMultiplier(state.currentWeapon).recoil
+        local driveByMult = config.getDriveByMultiplier(state.currentWeapon).recoil
         vertMult = vertMult * driveByMult * preset.recoil.driveByMultiplier
         horzMult = horzMult * driveByMult * preset.recoil.driveByMultiplier
     end
@@ -106,8 +106,8 @@ function RecoilSystem.RecalculateRecoil()
     -- Apply recoil shake to weapon
     SetWeaponRecoilShakeAmplitude(state.currentWeapon, state.effectiveRecoil)
     
-    if Config.Debug.enabled then
-        print(('[Recoil] Calculated - Base: %.3f, Vert: %.3f, Horz: %.3f'):format(
+    if config.debug.enabled then
+        _debug(('[Recoil] Calculated - Base: %.3f, Vert: %.3f, Horz: %.3f'):format(
             state.effectiveRecoil,
             state.effectiveVertical,
             state.effectiveHorizontal
@@ -152,10 +152,6 @@ CreateThread(function()
                 local accuracyPenalty = state.recoilAccumulation / state.effectiveRecoil
                 SetPlayerWeaponDamageModifier(PlayerId(), 1.0)  -- Reset damage
                 
-                -- Reduce accuracy based on recoil accumulation
-                -- Note: We can't directly set accuracy, but we can simulate through spread
-                -- This is a visual/feel mechanism; server validates actual damage
-                
             else
                 -- Recoil recovery
                 if state.isShooting then
@@ -172,7 +168,7 @@ CreateThread(function()
             end
         end
         
-        Wait(Config.RecoilUpdateInterval)
+        Wait(config.recoilUpdateInterval)
     end
 end)
 
@@ -183,10 +179,11 @@ end)
 ---Set active preset (called by server)
 ---@param presetName string
 function RecoilSystem.SetPreset(presetName)
-    local preset = Presets.Get(presetName)
+    local preset = presets.get(presetName)
     
     if not preset then
-        error(('[Recoil] Invalid preset: %s'):format(presetName))
+        _error(('[Recoil] Invalid preset: %s'):format(presetName))
+        return
     end
     
     state.activePreset = preset
@@ -196,8 +193,8 @@ function RecoilSystem.SetPreset(presetName)
         RecoilSystem.RecalculateRecoil()
     end
     
-    if Config.Debug.enabled then
-        print(('[Recoil] Preset activated: %s'):format(presetName))
+    if config.debug.enabled then
+        _debug(('[Recoil] Preset activated: %s'):format(presetName))
     end
     
     -- Visual notification (optional)
@@ -235,7 +232,7 @@ end)
 -- DEBUG VISUALIZATION
 -- ============================================================================
 
-if Config.Debug.visualizeRecoil then
+if config.debug.visualizeRecoil then
     CreateThread(function()
         while true do
             if state.isShooting and state.recoilAccumulation > 0 then
@@ -269,12 +266,12 @@ CreateThread(function()
     end
     
     -- Request default preset from server
-    if Config.Mode == 'single' then
+    if config.mode == 'single' then
         TriggerServerEvent('weaponFramework:requestDefaultPreset')
     end
     
-    if Config.Debug.enabled then
-        print('[Recoil] System initialized')
+    if config.debug.enabled then
+        _debug('[Recoil] System initialized')
     end
 end)
 

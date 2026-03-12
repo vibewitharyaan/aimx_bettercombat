@@ -37,10 +37,10 @@ local validationState = {
 ---Runs BEFORE damage is applied, allowing modification/cancellation
 AddEventHandler('weaponDamageEvent', function(sender, data)
     -- Only validate if anti-cheat is enabled
-    if not Config.AntiCheat.enabled then return end
+    if not config.antiCheat.enabled then return end
     
     -- Get player preset
-    local preset = exports['weapon_framework']:GetPlayerPreset(sender)
+    local preset = exports[resName]:getPlayerPreset(sender)
     if not preset then
         -- No preset = no validation (server hasn't assigned one yet)
         return
@@ -49,7 +49,7 @@ AddEventHandler('weaponDamageEvent', function(sender, data)
     -- Only validate if client is overriding default damage
     if not data.overrideDefaultDamage then
         -- Client using default game damage, log but allow
-        if Config.AntiCheat.logLevel == 'all' then
+        if config.antiCheat.logLevel == 'all' then
             DamageValidator.LogDamageEvent(sender, data, nil, 'default_damage')
         end
         return
@@ -70,14 +70,14 @@ AddEventHandler('weaponDamageEvent', function(sender, data)
     end
     
     -- Get bone group from hit component
-    local boneGroup = BoneMap.GetGroupWithFallback(data.hitComponent, true)
+    local boneGroup = bonemap.getGroupWithFallback(data.hitComponent, true)
     
     -- Check if shooter is in vehicle (affects damage calculation)
     local shooterPed = GetPlayerPed(sender)
     local inVehicle = IsPedInAnyVehicle(shooterPed, false)
     
     -- Calculate expected damage based on preset
-    local expectedDamage = Presets.CalculateDamage(
+    local expectedDamage = presets.calculateDamage(
         data.weaponType,
         boneGroup,
         preset,
@@ -85,7 +85,7 @@ AddEventHandler('weaponDamageEvent', function(sender, data)
     )
     
     -- Validate reported damage against expected
-    local withinBounds, variance = Presets.ValidateDamage(
+    local withinBounds, variance = presets.validateDamage(
         data.weaponDamage,
         expectedDamage,
         preset
@@ -115,7 +115,7 @@ AddEventHandler('weaponDamageEvent', function(sender, data)
         
     else
         -- Damage within bounds, log if configured
-        if Config.AntiCheat.logLevel == 'all' then
+        if config.antiCheat.logLevel == 'all' then
             DamageValidator.LogDamageEvent(sender, data, {
                 expected = expectedDamage,
                 variance = variance,
@@ -181,19 +181,19 @@ function DamageValidator.HandleHeadshotRateDetection(source, stats, preset)
     
     table.insert(stats.detections, detection)
     
-    print(('[Anti-Cheat] Player %d: Suspicious headshot rate %.2f%% (threshold: %.2f%%)'):format(
+    _warn(('Player %d: Suspicious headshot rate %.2f%% (threshold: %.2f%%)'):format(
         source,
         stats.headshotRate * 100,
         preset.validation.maxHeadshotRate * 100
     ))
     
     -- Log to database if configured
-    if Config.AntiCheat.useDatabase and Config.AntiCheat.databaseExport then
+    if config.antiCheat.useDatabase and config.antiCheat.databaseExport then
         DamageValidator.LogToDatabase(source, detection)
     end
     
     -- Take action if threshold reached
-    if #stats.detections >= Config.AntiCheat.minDetections then
+    if #stats.detections >= config.antiCheat.minDetections then
         DamageValidator.TakeAction(source, 'headshot_rate', detection)
     end
 end
@@ -228,12 +228,12 @@ function DamageValidator.HandleDetection(source, detection)
     })
     
     -- Console log
-    local weaponName = Config.GetWeapon(detection.weapon)
-    weaponName = weaponName and weaponName.name or 'Unknown'
+    local weaponData = config.getWeapon(detection.weapon)
+    local weaponName = weaponData and weaponData.name or 'Unknown'
     
-    print(('[Anti-Cheat] Player %d: Damage variance detected'):format(source))
-    print(('  Weapon: %s | Bone: %s | Preset: %s'):format(weaponName, detection.boneGroup, detection.preset))
-    print(('  Reported: %.1f | Expected: %.1f | Variance: %.2f%% (limit: %.2f%%)'):format(
+    _warn(('Player %d: Damage variance detected'):format(source))
+    _debug(('  Weapon: %s | Bone: %s | Preset: %s'):format(weaponName, detection.boneGroup, detection.preset))
+    _debug(('  Reported: %.1f | Expected: %.1f | Variance: %.2f%% (limit: %.2f%%)'):format(
         detection.reported,
         detection.expected,
         detection.variance * 100,
@@ -241,12 +241,12 @@ function DamageValidator.HandleDetection(source, detection)
     ))
     
     -- Database logging
-    if Config.AntiCheat.useDatabase and Config.AntiCheat.databaseExport then
+    if config.antiCheat.useDatabase and config.antiCheat.databaseExport then
         DamageValidator.LogToDatabase(source, detection)
     end
     
     -- Take action if threshold reached
-    local detectionWindow = Config.AntiCheat.detectionWindow
+    local detectionWindow = config.antiCheat.detectionWindow
     local recentDetections = 0
     local currentTime = os.time()
     
@@ -256,7 +256,7 @@ function DamageValidator.HandleDetection(source, detection)
         end
     end
     
-    if recentDetections >= Config.AntiCheat.minDetections then
+    if recentDetections >= config.antiCheat.minDetections then
         DamageValidator.TakeAction(source, 'damage_variance', detection)
     end
 end
@@ -266,7 +266,7 @@ end
 ---@param detectionType string
 ---@param detection table
 function DamageValidator.TakeAction(source, detectionType, detection)
-    local action = Config.AntiCheat.action
+    local action = config.antiCheat.action
     
     if action == 'log' then
         -- Already logged, do nothing more
@@ -277,11 +277,11 @@ function DamageValidator.TakeAction(source, detectionType, detection)
     local reason = ('[Weapon Framework] Suspicious activity: %s'):format(detectionType)
     
     if action == 'kick' then
-        print(('[Anti-Cheat] KICKING player %d (%s) - %s'):format(source, playerName, detectionType))
+        _warn(('KICKING player %d (%s) - %s'):format(source, playerName, detectionType))
         DropPlayer(source, reason)
         
     elseif action == 'ban' then
-        print(('[Anti-Cheat] BANNING player %d (%s) - %s'):format(source, playerName, detectionType))
+        _warn(('BANNING player %d (%s) - %s'):format(source, playerName, detectionType))
         
         -- Integration point for ban system
         -- Example: TriggerEvent('yourBanSystem:ban', source, reason, detection)
@@ -307,8 +307,8 @@ function DamageValidator.ApplyCorrectDamage(targetEntity, damage, attacker)
         local attackerPed = GetPlayerPed(attacker)
         ApplyDamageToPed(targetPed, damage, false)
         
-        if Config.Debug.printDamage then
-            print(('[Damage] Applied %.1f damage from player %d to entity %d'):format(
+        if config.debug.printDamage then
+            _debug(('Applied %.1f damage from player %d to entity %d'):format(
                 damage, attacker, targetEntity
             ))
         end
@@ -325,10 +325,10 @@ end
 ---@param validation table|nil
 ---@param status string
 function DamageValidator.LogDamageEvent(source, data, validation, status)
-    if Config.Debug.enabled then
-        print(('[Damage Log] Player %d | Status: %s'):format(source, status))
+    if config.debug.enabled then
+        _debug(('Damage Log] Player %d | Status: %s'):format(source, status))
         if validation then
-            print(('  Expected: %.1f | Variance: %.2f%% | Bone: %s'):format(
+            _debug(('  Expected: %.1f | Variance: %.2f%% | Bone: %s'):format(
                 validation.expected,
                 validation.variance * 100,
                 validation.boneGroup
@@ -341,10 +341,10 @@ end
 ---@param source number
 ---@param detection table
 function DamageValidator.LogToDatabase(source, detection)
-    if not Config.AntiCheat.databaseExport then return end
+    if not config.antiCheat.databaseExport then return end
     
     -- Example: Using oxmysql
-    -- exports[Config.AntiCheat.databaseExport]:execute(
+    -- exports[config.antiCheat.databaseExport]:execute(
     --     'INSERT INTO weapon_detections (player_id, detection_type, data, timestamp) VALUES (?, ?, ?, ?)',
     --     {source, detection.type, json.encode(detection), detection.timestamp}
     -- )

@@ -34,9 +34,9 @@ local playerPresets = {
 ---@return boolean success
 function PresetManager.AssignPreset(source, presetName, assignedBy, lobby)
     -- Validate preset exists
-    local preset = Presets.Get(presetName)
+    local preset = presets.get(presetName)
     if not preset then
-        print(('[Preset Manager] ERROR: Invalid preset "%s"'):format(presetName))
+        _error(('Invalid preset "%s"'):format(presetName))
         return false
     end
     
@@ -51,8 +51,8 @@ function PresetManager.AssignPreset(source, presetName, assignedBy, lobby)
     -- Notify client
     TriggerClientEvent('weaponFramework:setPreset', source, presetName)
     
-    if Config.Debug.enabled then
-        print(('[Preset Manager] Assigned "%s" to player %d'):format(presetName, source))
+    if config.debug.enabled then
+        _debug(('Assigned "%s" to player %d'):format(presetName, source))
     end
     
     return true
@@ -65,7 +65,7 @@ function PresetManager.GetPlayerPreset(source)
     local assignment = playerPresets[source]
     if not assignment then return nil end
     
-    return Presets.Get(assignment.presetName)
+    return presets.get(assignment.presetName)
 end
 
 ---Get player's preset name
@@ -90,9 +90,9 @@ end
 ---Initialize player with default preset (single-preset mode)
 ---@param source number
 function PresetManager.InitializePlayer(source)
-    if Config.Mode == 'single' then
+    if config.mode == 'single' then
         -- Assign default preset
-        PresetManager.AssignPreset(source, Config.DefaultPreset, 'system')
+        PresetManager.AssignPreset(source, config.defaultPreset, 'system')
     end
     -- In multi-preset mode, server must explicitly assign via lobby system
 end
@@ -102,26 +102,26 @@ end
 ---@param changedBy number
 ---@return boolean success
 function PresetManager.ChangeGlobalPreset(presetName, changedBy)
-    if Config.Mode ~= 'single' then
-        print('[Preset Manager] ERROR: Cannot change global preset in multi-preset mode')
+    if config.mode ~= 'single' then
+        _error('Cannot change global preset in multi-preset mode')
         return false
     end
     
-    local preset = Presets.Get(presetName)
+    local preset = presets.get(presetName)
     if not preset then
-        print(('[Preset Manager] ERROR: Invalid preset "%s"'):format(presetName))
+        _error(('Invalid preset "%s"'):format(presetName))
         return false
     end
     
     -- Update config
-    Config.DefaultPreset = presetName
+    config.defaultPreset = presetName
     
     -- Reassign all players
     for source in pairs(playerPresets) do
         PresetManager.AssignPreset(source, presetName, changedBy)
     end
     
-    print(('[Preset Manager] Global preset changed to "%s" by player %d'):format(
+    _info(('Global preset changed to "%s" by player %d'):format(
         presetName, changedBy
     ))
     
@@ -138,8 +138,8 @@ end
 ---@param lobbyPreset string
 ---@return boolean success
 function PresetManager.AssignByLobby(source, lobbyName, lobbyPreset)
-    if Config.Mode ~= 'multi' then
-        print('[Preset Manager] WARNING: AssignByLobby called in single-preset mode')
+    if config.mode ~= 'multi' then
+        _warn('AssignByLobby called in single-preset mode')
     end
     
     return PresetManager.AssignPreset(source, lobbyPreset, 'lobby_system', lobbyName)
@@ -182,7 +182,7 @@ function PresetManager.ReloadPresets()
         TriggerClientEvent('weaponFramework:reloadRecoil', source)
     end
     
-    print('[Preset Manager] Presets reloaded for all players')
+    _info('Presets reloaded for all players')
 end
 
 -- ============================================================================
@@ -230,8 +230,8 @@ AddEventHandler('playerDropped', function()
     local source = source
     playerPresets[source] = nil
     
-    if Config.Debug.enabled then
-        print(('[Preset Manager] Cleaned up player %d'):format(source))
+    if config.debug.enabled then
+        _debug(('Cleaned up player %d'):format(source))
     end
 end)
 
@@ -288,18 +288,18 @@ end)
 
 CreateThread(function()
     -- Validate default preset
-    if Config.Mode == 'single' then
-        local defaultPreset = Presets.Get(Config.DefaultPreset)
+    if config.mode == 'single' then
+        local defaultPreset = presets.get(config.defaultPreset)
         if not defaultPreset then
-            error(('[Preset Manager] FATAL: Default preset "%s" not found'):format(Config.DefaultPreset))
+            _error(('FATAL: Default preset "%s" not found'):format(config.defaultPreset))
+        else
+            _info(('Running in SINGLE-PRESET mode: %s'):format(config.defaultPreset))
         end
-        
-        print(('[Preset Manager] Running in SINGLE-PRESET mode: %s'):format(Config.DefaultPreset))
     else
-        print('[Preset Manager] Running in MULTI-PRESET mode (lobby-based)')
+        _info('Running in MULTI-PRESET mode (lobby-based)')
     end
     
-    print('[Preset Manager] Initialized')
+    _info('Preset Manager Initialized')
 end)
 
 -- ============================================================================

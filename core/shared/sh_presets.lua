@@ -5,7 +5,7 @@
 -- Each preset is the SINGLE SOURCE OF TRUTH for validation
 -- ============================================================================
 
-Presets = {}
+presets = {}
 
 -- ============================================================================
 -- PRESET: REALISTIC (Default RP Mode)
@@ -14,7 +14,7 @@ Presets = {}
 -- Moderate recoil, realistic damage, headshots significant
 -- ============================================================================
 
-Presets.realistic = {
+presets.realistic = {
     name = 'realistic',
     description = 'Balanced realistic combat for RP servers',
     
@@ -98,7 +98,7 @@ Presets.realistic = {
 -- Headshots critical, rewards accuracy
 -- ============================================================================
 
-Presets.competitive = {
+presets.competitive = {
     name = 'competitive',
     description = 'Low-recoil competitive PvP',
     
@@ -138,7 +138,7 @@ Presets.competitive = {
 -- Every bullet counts
 -- ============================================================================
 
-Presets.hardcore = {
+presets.hardcore = {
     name = 'hardcore',
     description = 'High recoil, realistic lethality',
     
@@ -182,7 +182,7 @@ Presets.hardcore = {
 -- Fun and accessible
 -- ============================================================================
 
-Presets.arcade = {
+presets.arcade = {
     name = 'arcade',
     description = 'Easy recoil, forgiving damage',
     
@@ -220,10 +220,10 @@ Presets.arcade = {
 -- ============================================================================
 
 local presetRegistry = {
-    realistic = Presets.realistic,
-    competitive = Presets.competitive,
-    hardcore = Presets.hardcore,
-    arcade = Presets.arcade,
+    realistic = presets.realistic,
+    competitive = presets.competitive,
+    hardcore = presets.hardcore,
+    arcade = presets.arcade,
 }
 
 -- ============================================================================
@@ -233,13 +233,13 @@ local presetRegistry = {
 ---Get preset by name
 ---@param name string
 ---@return table|nil
-function Presets.Get(name)
+function presets.get(name)
     return presetRegistry[name]
 end
 
 ---Get all preset names
 ---@return string[]
-function Presets.GetAll()
+function presets.getAll()
     local names = {}
     for name in pairs(presetRegistry) do
         table.insert(names, name)
@@ -249,7 +249,7 @@ end
 
 ---Register custom preset
 ---@param preset table
-function Presets.Register(preset)
+function presets.register(preset)
     if not preset.name then
         error('Preset must have a name field')
     end
@@ -261,7 +261,7 @@ function Presets.Register(preset)
     
     presetRegistry[preset.name] = preset
     
-    if Config.Debug.enabled then
+    if config.debug.enabled then
         print(('[Weapon Framework] Registered custom preset: %s'):format(preset.name))
     end
 end
@@ -271,8 +271,8 @@ end
 ---@param preset table
 ---@param inVehicle boolean
 ---@return number
-function Presets.CalculateRecoil(weaponHash, preset, inVehicle)
-    local weapon = Config.GetWeapon(weaponHash)
+function presets.calculateRecoil(weaponHash, preset, inVehicle)
+    local weapon = config.getWeapon(weaponHash)
     if not weapon then return 0 end
     
     local recoil = weapon.baseRecoil
@@ -287,7 +287,7 @@ function Presets.CalculateRecoil(weaponHash, preset, inVehicle)
     
     -- Apply drive-by multiplier if in vehicle
     if inVehicle then
-        local driveByMult = Config.GetDriveByMultiplier(weaponHash).recoil
+        local driveByMult = config.getDriveByMultiplier(weaponHash).recoil
         recoil = recoil * driveByMult * preset.recoil.driveByMultiplier
     end
     
@@ -300,8 +300,8 @@ end
 ---@param preset table
 ---@param inVehicle boolean
 ---@return number
-function Presets.CalculateDamage(weaponHash, boneGroup, preset, inVehicle)
-    local weapon = Config.GetWeapon(weaponHash)
+function presets.calculateDamage(weaponHash, boneGroup, preset, inVehicle)
+    local weapon = config.getWeapon(weaponHash)
     if not weapon then return 0 end
     
     local damage = weapon.baseDamage
@@ -325,7 +325,7 @@ function Presets.CalculateDamage(weaponHash, boneGroup, preset, inVehicle)
     
     -- Apply drive-by multiplier if in vehicle
     if inVehicle then
-        local driveByMult = Config.GetDriveByMultiplier(weaponHash).damage
+        local driveByMult = config.getDriveByMultiplier(weaponHash).damage
         damage = damage * driveByMult * preset.damage.driveByMultiplier
     end
     
@@ -338,7 +338,7 @@ end
 ---@param preset table
 ---@return boolean withinBounds
 ---@return number variance
-function Presets.ValidateDamage(reported, expected, preset)
+function presets.validateDamage(reported, expected, preset)
     if expected == 0 then return true, 0 end
     
     local variance = math.abs(reported - expected) / expected

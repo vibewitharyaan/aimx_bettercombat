@@ -9,9 +9,9 @@
 -- TUNER ACCESS COMMAND
 -- ============================================================================
 
-lib.addCommand(Config.Tuner.command, {
+lib.addCommand(config.tuner.command, {
     help = 'Open weapon tuner interface (admin only)',
-    restricted = Config.Tuner.permission  -- e.g., 'group.admin'
+    restricted = config.tuner.permission  -- e.g., 'group.admin'
 }, function(source, args, raw)
     -- Permission automatically validated by ox_lib
     -- This code ONLY runs if player has the required ACE
@@ -19,7 +19,7 @@ lib.addCommand(Config.Tuner.command, {
     -- Open NUI tuner
     TriggerClientEvent('weaponFramework:openTuner', source)
     
-    print(('[Tuner] Player %d (%s) opened weapon tuner'):format(
+    _info(('Player %d (%s) opened weapon tuner'):format(
         source,
         GetPlayerName(source)
     ))
@@ -30,19 +30,19 @@ end)
 -- ============================================================================
 
 ---Handle weapon configuration save from tuner
-RegisterNetEvent('weaponFramework:tuner:saveWeapon', function(config, presetName)
+RegisterNetEvent('weaponFramework:tuner:saveWeapon', function(data, presetName)
     local source = source
     
     -- Verify player has permission
-    if not IsPlayerAceAllowed(source, Config.Tuner.permission) then
-        print(('[Tuner] SECURITY: Player %d attempted to save without permission'):format(source))
+    if not IsPlayerAceAllowed(source, config.tuner.permission) then
+        _warn(('SECURITY: Player %d attempted to save without permission'):format(source))
         return
     end
     
     -- Log the save
-    print(('[Tuner] Player %d saved weapon config for %s to preset %s'):format(
+    _info(('Player %d saved weapon config for %s to preset %s'):format(
         source,
-        config.hash,
+        data.hash,
         presetName
     ))
     
@@ -51,7 +51,7 @@ RegisterNetEvent('weaponFramework:tuner:saveWeapon', function(config, presetName
     
     TriggerClientEvent('ox_lib:notify', source, {
         type = 'success',
-        description = ('Saved %s configuration!\nUse the export code to update your config files.'):format(config.name)
+        description = ('Saved %s configuration!\nUse the export code to update your config files.'):format(data.name)
     })
 end)
 
@@ -73,7 +73,7 @@ lib.addCommand('setpreset', {
             help = 'Preset name (realistic, competitive, hardcore, arcade)'
         }
     },
-    restricted = Config.Tuner.permission
+    restricted = config.tuner.permission
 }, function(source, args, raw)
     local targetSource = args.target
     local presetName = args.preset
@@ -89,7 +89,7 @@ lib.addCommand('setpreset', {
     end
     
     -- Assign preset
-    local success = exports['weapon_framework']:assignPreset(targetSource, presetName, source)
+    local success = exports[resName]:assignPreset(targetSource, presetName, source)
     
     if success then
         TriggerClientEvent('ox_lib:notify', source, {
@@ -113,11 +113,11 @@ lib.addCommand('changeglobalpreset', {
             help = 'Preset name'
         }
     },
-    restricted = Config.Tuner.permission
+    restricted = config.tuner.permission
 }, function(source, args, raw)
     local presetName = args.preset
     
-    local success = exports['weapon_framework']:changeGlobalPreset(presetName, source)
+    local success = exports[resName]:changeGlobalPreset(presetName, source)
     
     if success then
         TriggerClientEvent('ox_lib:notify', -1, {
@@ -138,13 +138,13 @@ end)
 
 lib.addCommand('listpresets', {
     help = 'List all available presets',
-    restricted = Config.Tuner.permission
+    restricted = config.tuner.permission
 }, function(source, args, raw)
-    local presets = Presets.GetAll()
+    local presetList = presets.getAll()
     
     local message = 'Available Presets:\n'
-    for _, name in ipairs(presets) do
-        local preset = Presets.Get(name)
+    for _, name in ipairs(presetList) do
+        local preset = presets.get(name)
         message = message .. ('- %s: %s\n'):format(name, preset.description)
     end
     
@@ -157,9 +157,9 @@ end)
 
 lib.addCommand('presetstats', {
     help = 'Show preset usage statistics',
-    restricted = Config.Tuner.permission
+    restricted = config.tuner.permission
 }, function(source, args, raw)
-    local stats = exports['weapon_framework']:getStatistics()
+    local stats = exports[resName]:getStatistics()
     
     local message = ('Preset Statistics:\nTotal Players: %d\n'):format(stats.totalPlayers)
     
@@ -194,11 +194,11 @@ lib.addCommand('playerstats', {
             help = 'Target player server ID'
         }
     },
-    restricted = Config.Tuner.permission
+    restricted = config.tuner.permission
 }, function(source, args, raw)
     local targetSource = args.target
     
-    local stats = exports['weapon_framework']:getPlayerStats(targetSource)
+    local stats = exports[resName]:getPlayerStats(targetSource)
     
     if not stats then
         TriggerClientEvent('ox_lib:notify', source, {
@@ -230,11 +230,11 @@ lib.addCommand('resetstats', {
             help = 'Target player server ID'
         }
     },
-    restricted = Config.Tuner.permission
+    restricted = config.tuner.permission
 }, function(source, args, raw)
     local targetSource = args.target
     
-    exports['weapon_framework']:resetPlayerStats(targetSource)
+    exports[resName]:resetPlayerStats(targetSource)
     
     TriggerClientEvent('ox_lib:notify', source, {
         type = 'success',
@@ -252,10 +252,10 @@ lib.addCommand('detectionlog', {
             optional = true
         }
     },
-    restricted = Config.Tuner.permission
+    restricted = config.tuner.permission
 }, function(source, args, raw)
     local count = args.count or 10
-    local log = exports['weapon_framework']:getDetectionLog()
+    local log = exports[resName]:getDetectionLog()
     
     if #log == 0 then
         TriggerClientEvent('ox_lib:notify', source, {
@@ -294,9 +294,9 @@ end)
 
 lib.addCommand('reloadpresets', {
     help = 'Reload preset configuration for all players',
-    restricted = Config.Tuner.permission
+    restricted = config.tuner.permission
 }, function(source, args, raw)
-    exports['weapon_framework']:reloadPresets()
+    exports[resName]:reloadPresets()
     
     TriggerClientEvent('ox_lib:notify', source, {
         type = 'success',
@@ -323,12 +323,12 @@ lib.addCommand('weaponinfo', {
             optional = true
         }
     },
-    restricted = Config.Tuner.permission
+    restricted = config.tuner.permission
 }, function(source, args, raw)
     local weaponName = args.weapon
     local weaponHash = GetHashKey(weaponName)
     
-    local weapon = Config.GetWeapon(weaponHash)
+    local weapon = config.getWeapon(weaponHash)
     if not weapon then
         TriggerClientEvent('ox_lib:notify', source, {
             type = 'error',
@@ -337,7 +337,7 @@ lib.addCommand('weaponinfo', {
         return
     end
     
-    local preset = args.preset and Presets.Get(args.preset) or Presets.Get(Config.DefaultPreset)
+    local preset = args.preset and presets.get(args.preset) or presets.get(config.defaultPreset)
     
     local message = ('Weapon: %s\n'):format(weapon.name)
     message = message .. ('Class: %s\n'):format(weapon.class)
@@ -348,9 +348,9 @@ lib.addCommand('weaponinfo', {
         message = message .. ('\nWith Preset "%s":\n'):format(preset.name)
         
         -- Calculate effective values
-        local effectiveRecoil = Presets.CalculateRecoil(weaponHash, preset, false)
-        local headDamage = Presets.CalculateDamage(weaponHash, 'head', preset, false)
-        local torsoDamage = Presets.CalculateDamage(weaponHash, 'torso', preset, false)
+        local effectiveRecoil = presets.calculateRecoil(weaponHash, preset, false)
+        local headDamage = presets.calculateDamage(weaponHash, 'head', preset, false)
+        local torsoDamage = presets.calculateDamage(weaponHash, 'torso', preset, false)
         
         message = message .. ('Effective Recoil: %.3f\n'):format(effectiveRecoil)
         message = message .. ('Headshot Damage: %.1f\n'):format(headDamage)
@@ -369,16 +369,5 @@ end)
 -- ============================================================================
 
 CreateThread(function()
-    print(('[Tuner Commands] Registered with permission: %s'):format(Config.Tuner.permission))
-    print('[Tuner Commands] Available commands:')
-    print(('  /%s - Open tuner UI'):format(Config.Tuner.command))
-    print('  /setpreset <player> <preset> - Assign preset')
-    print('  /changeglobalpreset <preset> - Change server preset')
-    print('  /listpresets - List presets')
-    print('  /presetstats - Preset statistics')
-    print('  /playerstats <player> - Player stats')
-    print('  /resetstats <player> - Reset player stats')
-    print('  /detectionlog [count] - View detections')
-    print('  /reloadpresets - Reload presets')
-    print('  /weaponinfo <weapon> [preset] - Weapon info')
+    _info(('Tuner Commands Registered with permission: %s'):format(config.tuner.permission))
 end)

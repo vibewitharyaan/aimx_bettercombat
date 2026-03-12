@@ -23,8 +23,8 @@ function TunerUI.Open()
     
     isOpen = true
     
-    if Config.Debug.enabled then
-        print('[Tuner UI] Opened')
+    if config.debug.enabled then
+        _debug('[Tuner UI] Opened')
     end
 end
 
@@ -40,8 +40,8 @@ function TunerUI.Close()
     isOpen = false
     testingRecoil = false
     
-    if Config.Debug.enabled then
-        print('[Tuner UI] Closed')
+    if config.debug.enabled then
+        _debug('[Tuner UI] Closed')
     end
 end
 
@@ -53,7 +53,7 @@ end
 RegisterNUICallback('getWeapons', function(data, cb)
     local weaponList = {}
     
-    for hash, weapon in pairs(Config.Weapons) do
+    for hash, weapon in pairs(config.weapons) do
         weaponList[tostring(hash)] = weapon
     end
     
@@ -75,8 +75,8 @@ RegisterNUICallback('testRecoil', function(data, cb)
     -- Apply test recoil values
     SetWeaponRecoilShakeAmplitude(weapon, data.baseRecoil or 0.15)
     
-    if Config.Debug.enabled then
-        print(('[Tuner] Testing recoil: %.3f'):format(data.baseRecoil or 0.15))
+    if config.debug.enabled then
+        _debug(('[Tuner] Testing recoil: %.3f'):format(data.baseRecoil or 0.15))
     end
     
     -- Send confirmation back to UI
@@ -127,7 +127,7 @@ end)
 -- KEYBIND (Optional - for quick access during development)
 -- ============================================================================
 
-if Config.Debug.enabled then
+if config.debug.enabled then
     RegisterCommand('tuneropen', function()
         TunerUI.Open()
     end, false)
