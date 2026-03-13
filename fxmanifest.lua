@@ -10,19 +10,20 @@ store "https://errorhub.tebex.io/"
 discord "https://discord.gg/Eux7CJEQN2"
 website "https://elapsedstudios.com/"
 
-server_scripts "config/discord.lua"
 shared_scripts {
     "@ox_lib/init.lua",
     "config/config.lua",
+    "config/presets.lua",
+    "config/bonemap.lua",
     "core/shared/sh_utils.lua",
     "core/shared/sh_bonemap.lua",
     "core/shared/sh_presets.lua"
 }
 
 client_scripts {
+    "core/client/interface/nui.lua",
     "core/client/cl_recoil.lua",
     "core/client/cl_tuner_ui.lua",
-    "core/client/interface/nui.lua",
     "core/client/cl_main.lua"
 }
 
@@ -35,8 +36,7 @@ server_scripts {
 
 files {
     "locales/en.json",
-    "nui/**/*",
-    "nui/index.html"
+    "nui/**/*"
 }
 
 ui_page "nui/index.html"

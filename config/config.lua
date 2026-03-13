@@ -23,8 +23,8 @@ config.recoilDecayRate = 0.002
 
 -- Anti-Cheat Configuration
 config.antiCheat = {
-    enabled = false,               -- Set to true for production
-    logLevel = 'suspicious',       -- 'none', 'suspicious', 'all'
+    enabled = false,         -- Set to true for production
+    logLevel = 'suspicious', -- 'none', 'suspicious', 'all'
     allowKick = false,
     allowBan = false,
     minDetections = 5,
@@ -127,7 +127,7 @@ function config.getDriveByMultiplier(weaponHash)
 end
 
 ----------------------------------------------------
---- DONT TOUCH ANYTHING BELOW THIS!! 
+--- DONT TOUCH ANYTHING BELOW THIS!!
 ----------------------------------------------------
 lib.locale()
 
@@ -183,10 +183,10 @@ _warn  = function(...) logPrint(true, "3", "WARN", "warn", ...) end
 _info  = function(...) logPrint(true, "6", "INFO", "info", ...) end
 
 
-resName, isServer = GetCurrentResourceName(), IsDuplicityVersion()
+resName, api = GetCurrentResourceName(), {}
 
-pname             = function(src)
-    if isServer then
+pname        = function(src)
+    if IsDuplicityVersion() then
         return (GetPlayerName(src) or "unknown") .. " [" .. src .. "]"
     else
         return GetPlayerName(cache.playerId) or "unknown"

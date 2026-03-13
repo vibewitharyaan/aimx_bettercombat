@@ -8,6 +8,7 @@ ui.loaded = false
 
 local NUI_DEBUG = { init = true, uiLoaded = true }
 
+---@diagnostic disable-next-line: duplicate-set-field
 function ui.sendMsg(action, data)
     local msg = { action = action }
     if data then msg.data = data end
@@ -18,10 +19,12 @@ function ui.sendMsg(action, data)
     end
 end
 
+---@diagnostic disable-next-line: duplicate-set-field
 function ui.focus(focus, cursor)
     SetNuiFocus(focus, cursor == nil and focus or cursor)
 end
 
+---@diagnostic disable-next-line: duplicate-set-field
 function ui.registerCb(name, handler)
     RegisterNUICallback(name, function(data, cb)
         local ok, result = pcall(handler, data)
