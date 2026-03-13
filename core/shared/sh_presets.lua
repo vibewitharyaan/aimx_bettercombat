@@ -1,4 +1,4 @@
-presets = {}
+api.presets = {}
 
 local presetRegistry = {}
 
@@ -12,12 +12,12 @@ CreateThread(function()
 end)
 
 -- Get preset by name
-function presets.get(name)
+function api.presets.get(name)
     return presetRegistry[name]
 end
 
 -- Get all preset names
-function presets.getAll()
+function api.presets.getAll()
     local names = {}
     for name in pairs(presetRegistry) do
         table.insert(names, name)
@@ -26,7 +26,7 @@ function presets.getAll()
 end
 
 -- Register custom preset
-function presets.register(preset)
+function api.presets.register(preset)
     if not preset.name then
         error('Preset must have a name field')
     end
@@ -43,7 +43,7 @@ function presets.register(preset)
 end
 
 -- Calculate effective recoil for weapon with preset
-function presets.calculateRecoil(weaponHash, preset, inVehicle)
+function api.presets.calculateRecoil(weaponHash, preset, inVehicle)
     local weapon = config.getWeapon(weaponHash)
     if not weapon then return 0 end
 
@@ -63,7 +63,7 @@ function presets.calculateRecoil(weaponHash, preset, inVehicle)
 end
 
 -- Calculate effective damage for weapon with preset
-function presets.calculateDamage(weaponHash, boneGroup, preset, inVehicle)
+function api.presets.calculateDamage(weaponHash, boneGroup, preset, inVehicle)
     local weapon = config.getWeapon(weaponHash)
     if not weapon then return 0 end
 
@@ -90,7 +90,7 @@ function presets.calculateDamage(weaponHash, boneGroup, preset, inVehicle)
 end
 
 -- Validate damage against preset tolerance
-function presets.validateDamage(reported, expected, preset)
+function api.presets.validateDamage(reported, expected, preset)
     if expected == 0 then return true, 0 end
 
     local variance = math.abs(reported - expected) / expected
@@ -99,4 +99,4 @@ function presets.validateDamage(reported, expected, preset)
     return variance <= tolerance, variance
 end
 
-return presets
+return api.presets

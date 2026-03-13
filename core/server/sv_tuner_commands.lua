@@ -89,11 +89,11 @@ lib.addCommand('listpresets', {
     help = 'List all available presets',
     restricted = config.tuner.permission
 }, function(source, args, raw)
-    local presetList = presets.getAll()
+    local presetList = api.presets.getAll()
     local message = 'Available Presets:\n'
     
     for _, name in ipairs(presetList) do
-        local preset = presets.get(name)
+        local preset = api.presets.get(name)
         message = message .. ('- %s: %s\n'):format(name, preset.description)
     end
     
@@ -254,7 +254,7 @@ lib.addCommand('weaponinfo', {
         return
     end
     
-    local preset = args.preset and presets.get(args.preset) or presets.get(config.defaultPreset)
+    local preset = args.preset and api.presets.get(args.preset) or api.presets.get(config.defaultPreset)
     local message = ('Weapon: %s\n'):format(weapon.name)
     message = message .. ('Class: %s\n'):format(weapon.class)
     message = message .. ('Base Damage: %.1f\n'):format(weapon.baseDamage)
@@ -263,9 +263,9 @@ lib.addCommand('weaponinfo', {
     if preset then
         message = message .. ('\nWith Preset "%s":\n'):format(preset.name)
         
-        local effectiveRecoil = presets.calculateRecoil(weaponHash, preset, false)
-        local headDamage = presets.calculateDamage(weaponHash, 'head', preset, false)
-        local torsoDamage = presets.calculateDamage(weaponHash, 'torso', preset, false)
+        local effectiveRecoil = api.presets.calculateRecoil(weaponHash, preset, false)
+        local headDamage = api.presets.calculateDamage(weaponHash, 'head', preset, false)
+        local torsoDamage = api.presets.calculateDamage(weaponHash, 'torso', preset, false)
         
         message = message .. ('Effective Recoil: %.3f\n'):format(effectiveRecoil)
         message = message .. ('Headshot Damage: %.1f\n'):format(headDamage)

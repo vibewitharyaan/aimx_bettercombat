@@ -1,10 +1,10 @@
-local presetManager = {}
+api.presetManager = {}
 
 local playerPresets = {}
 
 -- Assign preset to player
-function presetManager.assignPreset(source, presetName, assignedBy, lobby)
-    local preset = presets.get(presetName)
+function api.presetManager.assignPreset(source, presetName, assignedBy, lobby)
+    local preset = api.presets.get(presetName)
     if not preset then
         _error(('Invalid preset "%s"'):format(presetName))
         return false
@@ -27,38 +27,38 @@ function presetManager.assignPreset(source, presetName, assignedBy, lobby)
 end
 
 -- Get player's active preset
-function presetManager.getPlayerPreset(source)
+function api.presetManager.getPlayerPreset(source)
     local assignment = playerPresets[source]
     if not assignment then return nil end
-    return presets.get(assignment.presetName)
+    return api.presets.get(assignment.presetName)
 end
 
 -- Get player's preset name
-function presetManager.getPlayerPresetName(source)
+function api.presetManager.getPlayerPresetName(source)
     local assignment = playerPresets[source]
     return assignment and assignment.presetName or nil
 end
 
 -- Get player's preset assignment info
-function presetManager.getPlayerAssignment(source)
+function api.presetManager.getPlayerAssignment(source)
     return playerPresets[source]
 end
 
 -- Initialize player with default preset (single-preset mode)
-function presetManager.initializePlayer(source)
+function api.presetManager.initializePlayer(source)
     if config.mode == 'single' then
-        presetManager.assignPreset(source, config.defaultPreset, 'system')
+        api.presetManager.assignPreset(source, config.defaultPreset, 'system')
     end
 end
 
 -- Change global preset (single-preset mode only)
-function presetManager.changeGlobalPreset(presetName, changedBy)
+function api.presetManager.changeGlobalPreset(presetName, changedBy)
     if config.mode ~= 'single' then
         _error('Cannot change global preset in multi-preset mode')
         return false
     end
     
-    local preset = presets.get(presetName)
+    local preset = api.presets.get(presetName)
     if not preset then
         _error(('Invalid preset "%s"'):format(presetName))
         return false
@@ -67,7 +67,7 @@ function presetManager.changeGlobalPreset(presetName, changedBy)
     config.defaultPreset = presetName
     
     for source in pairs(playerPresets) do
-        presetManager.assignPreset(source, presetName, changedBy)
+        api.presetManager.assignPreset(source, presetName, changedBy)
     end
     
     _info(('Global preset changed to "%s" by player %d'):format(presetName, changedBy))
@@ -76,15 +76,15 @@ function presetManager.changeGlobalPreset(presetName, changedBy)
 end
 
 -- Assign preset by lobby (multi-preset mode)
-function presetManager.assignByLobby(source, lobbyName, lobbyPreset)
+function api.presetManager.assignByLobby(source, lobbyName, lobbyPreset)
     if config.mode ~= 'multi' then
         _warn('assignByLobby called in single-preset mode')
     end
-    return presetManager.assignPreset(source, lobbyPreset, 'lobby_system', lobbyName)
+    return api.presetManager.assignPreset(source, lobbyPreset, 'lobby_system', lobbyName)
 end
 
 -- Get all players with a specific preset
-function presetManager.getPlayersWithPreset(presetName)
+function api.presetManager.getPlayersWithPreset(presetName)
     local players = {}
     for source, assignment in pairs(playerPresets) do
         if assignment.presetName == presetName then
@@ -95,7 +95,7 @@ function presetManager.getPlayersWithPreset(presetName)
 end
 
 -- Get all players in a lobby
-function presetManager.getPlayersInLobby(lobbyName)
+function api.presetManager.getPlayersInLobby(lobbyName)
     local players = {}
     for source, assignment in pairs(playerPresets) do
         if assignment.lobby == lobbyName then
@@ -106,7 +106,7 @@ function presetManager.getPlayersInLobby(lobbyName)
 end
 
 -- Reload presets from config
-function presetManager.reloadPresets()
+function api.presetManager.reloadPresets()
     for source in pairs(playerPresets) do
         TriggerClientEvent('weaponFramework:reloadRecoil', source)
     end
@@ -114,7 +114,7 @@ function presetManager.reloadPresets()
 end
 
 -- Get preset usage statistics
-function presetManager.getStatistics()
+function api.presetManager.getStatistics()
     local stats = {
         totalPlayers = 0,
         presetCounts = {},
@@ -139,7 +139,7 @@ end
 -- Player joined server
 RegisterNetEvent('weaponFramework:requestDefaultPreset', function()
     local source = source
-    presetManager.initializePlayer(source)
+    api.presetManager.initializePlayer(source)
 end)
 
 -- Player disconnected
@@ -156,7 +156,7 @@ end)
 RegisterNetEvent('weaponFramework:admin:changePlayerPreset', function(targetSource, presetName)
     local source = source
     
-    if not presetManager.assignPreset(targetSource, presetName, source) then
+    if not api.presetManager.assignPreset(targetSource, presetName, source) then
         TriggerClientEvent('weaponFramework:notify', source, {
             type = 'error',
             message = ('Invalid preset: %s'):format(presetName)
@@ -174,7 +174,7 @@ end)
 RegisterNetEvent('weaponFramework:admin:changeGlobalPreset', function(presetName)
     local source = source
     
-    if not presetManager.changeGlobalPreset(presetName, source) then
+    if not api.presetManager.changeGlobalPreset(presetName, source) then
         TriggerClientEvent('weaponFramework:notify', source, {
             type = 'error',
             message = 'Failed to change global preset'
@@ -195,7 +195,7 @@ end)
 
 CreateThread(function()
     if config.mode == 'single' then
-        local defaultPreset = presets.get(config.defaultPreset)
+        local defaultPreset = api.presets.get(config.defaultPreset)
         if not defaultPreset then
             _error(('FATAL: Default preset "%s" not found'):format(config.defaultPreset))
         else
@@ -208,15 +208,15 @@ CreateThread(function()
     _info('Preset Manager Initialized')
 end)
 
-exports('assignPreset', presetManager.assignPreset)
-exports('getPlayerPreset', presetManager.getPlayerPreset)
-exports('getPlayerPresetName', presetManager.getPlayerPresetName)
-exports('getPlayerAssignment', presetManager.getPlayerAssignment)
-exports('assignByLobby', presetManager.assignByLobby)
-exports('getPlayersWithPreset', presetManager.getPlayersWithPreset)
-exports('getPlayersInLobby', presetManager.getPlayersInLobby)
-exports('reloadPresets', presetManager.reloadPresets)
-exports('getStatistics', presetManager.getStatistics)
-exports('changeGlobalPreset', presetManager.changeGlobalPreset)
+exports('assignPreset', api.presetManager.assignPreset)
+exports('getPlayerPreset', api.presetManager.getPlayerPreset)
+exports('getPlayerPresetName', api.presetManager.getPlayerPresetName)
+exports('getPlayerAssignment', api.presetManager.getPlayerAssignment)
+exports('assignByLobby', api.presetManager.assignByLobby)
+exports('getPlayersWithPreset', api.presetManager.getPlayersWithPreset)
+exports('getPlayersInLobby', api.presetManager.getPlayersInLobby)
+exports('reloadPresets', api.presetManager.reloadPresets)
+exports('getStatistics', api.presetManager.getStatistics)
+exports('changeGlobalPreset', api.presetManager.changeGlobalPreset)
 
-return presetManager
+return api.presetManager

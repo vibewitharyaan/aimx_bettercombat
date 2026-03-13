@@ -1,4 +1,4 @@
-bonemap = {}
+api.bonemap = {}
 
 local boneIdToGroup = {}
 
@@ -13,23 +13,23 @@ CreateThread(function()
 end)
 
 -- Get bone group from bone ID
-function bonemap.getGroupFromBone(boneId)
+function api.bonemap.getGroupFromBone(boneId)
     return boneIdToGroup[boneId]
 end
 
 -- Get bone group from component ID
-function bonemap.getGroupFromComponent(componentId)
+function api.bonemap.getGroupFromComponent(componentId)
     return config.componentToGroup and config.componentToGroup[componentId] or nil
 end
 
 -- Get all bones for a group
-function bonemap.getBonesForGroup(groupName)
+function api.bonemap.getBonesForGroup(groupName)
     local group = config.boneGroups and config.boneGroups[groupName]
     return group and group.bones or nil
 end
 
 -- Get all bone groups
-function bonemap.getAllGroups()
+function api.bonemap.getAllGroups()
     local groups = {}
     if config.boneGroups then
         for name in pairs(config.boneGroups) do
@@ -40,14 +40,14 @@ function bonemap.getAllGroups()
 end
 
 -- Get human-readable bone group name
-function bonemap.getGroupDescription(groupName)
+function api.bonemap.getGroupDescription(groupName)
     local group = config.boneGroups and config.boneGroups[groupName]
     return group and group.description or 'Unknown'
 end
 
 -- Get bone group with fallback logic
-function bonemap.getGroupWithFallback(boneOrComponentId, isComponent)
-    local group = isComponent and bonemap.getGroupFromComponent(boneOrComponentId) or bonemap.getGroupFromBone(boneOrComponentId)
+function api.bonemap.getGroupWithFallback(boneOrComponentId, isComponent)
+    local group = isComponent and api.bonemap.getGroupFromComponent(boneOrComponentId) or api.bonemap.getGroupFromBone(boneOrComponentId)
     if group then return group end
     
     if config.debug.code then
@@ -59,4 +59,4 @@ function bonemap.getGroupWithFallback(boneOrComponentId, isComponent)
     return 'torso'
 end
 
-return bonemap
+return api.bonemap

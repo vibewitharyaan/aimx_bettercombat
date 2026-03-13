@@ -1,5 +1,5 @@
 local isServer = IsDuplicityVersion()
-utils = {}
+api.utils = {}
 
 if isServer then
     -- add server sided code here

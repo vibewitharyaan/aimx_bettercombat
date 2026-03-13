@@ -1,4 +1,4 @@
-local recoilSystem = {}
+api.recoilSystem = {}
 
 local state = {
     activePreset = nil,
@@ -18,7 +18,7 @@ lib.onCache('weapon', function(weaponHash, oldWeapon)
     state.currentWeapon = weaponHash
 
     if weaponHash then
-        recoilSystem.recalculateRecoil()
+        api.recoilSystem.recalculateRecoil()
 
         if config.debug.code then
             local weapon = config.getWeapon(weaponHash)
@@ -36,7 +36,7 @@ lib.onCache('vehicle', function(vehicle, oldVehicle)
     state.inVehicle = vehicle ~= false
 
     if state.currentWeapon then
-        recoilSystem.recalculateRecoil()
+        api.recoilSystem.recalculateRecoil()
     end
 
     if config.debug.code then
@@ -45,7 +45,7 @@ lib.onCache('vehicle', function(vehicle, oldVehicle)
 end)
 
 -- Recalculate effective recoil based on current state
-function recoilSystem.recalculateRecoil()
+function api.recoilSystem.recalculateRecoil()
     if not state.activePreset or not state.currentWeapon then
         state.effectiveRecoil = 0
         state.effectiveVertical = 0
@@ -56,7 +56,7 @@ function recoilSystem.recalculateRecoil()
     local weapon = config.getWeapon(state.currentWeapon)
     if not weapon then return end
 
-    state.effectiveRecoil = presets.calculateRecoil(
+    state.effectiveRecoil = api.presets.calculateRecoil(
         state.currentWeapon,
         state.activePreset,
         state.inVehicle
@@ -135,8 +135,8 @@ CreateThread(function()
 end)
 
 -- Set active preset
-function recoilSystem.setPreset(presetName)
-    local preset = presets.get(presetName)
+function api.recoilSystem.setPreset(presetName)
+    local preset = api.presets.get(presetName)
 
     if not preset then
         _error(('[Recoil] Invalid preset: %s'):format(presetName))
@@ -146,7 +146,7 @@ function recoilSystem.setPreset(presetName)
     state.activePreset = preset
 
     if state.currentWeapon then
-        recoilSystem.recalculateRecoil()
+        api.recoilSystem.recalculateRecoil()
     end
 
     if config.debug.code then
@@ -162,19 +162,19 @@ function recoilSystem.setPreset(presetName)
 end
 
 -- Get current preset
-function recoilSystem.getPreset()
+function api.recoilSystem.getPreset()
     return state.activePreset
 end
 
 -- Server assigns preset to client
 RegisterNetEvent('weaponFramework:setPreset', function(presetName)
-    recoilSystem.setPreset(presetName)
+    api.recoilSystem.setPreset(presetName)
 end)
 
 -- Server forces recoil recalculation
 RegisterNetEvent('weaponFramework:reloadRecoil', function()
     if state.currentWeapon then
-        recoilSystem.recalculateRecoil()
+        api.recoilSystem.recalculateRecoil()
     end
 end)
 
@@ -225,7 +225,7 @@ exports('getEffectiveRecoil', function()
 end)
 
 exports('setPreset', function(presetName)
-    recoilSystem.setPreset(presetName)
+    api.recoilSystem.setPreset(presetName)
 end)
 
-return recoilSystem
+return api.recoilSystem

@@ -1,4 +1,4 @@
-local damageValidator = {}
+api.damageValidator = {}
 
 local validationState = {
     playerStats = {},
@@ -14,7 +14,7 @@ AddEventHandler('weaponDamageEvent', function(sender, data)
 
     if not data.overrideDefaultDamage then
         if config.antiCheat.logLevel == 'all' then
-            damageValidator.logDamageEvent(sender, data, nil, 'default_damage')
+            api.damageValidator.logDamageEvent(sender, data, nil, 'default_damage')
         end
         return
     end
@@ -27,17 +27,17 @@ AddEventHandler('weaponDamageEvent', function(sender, data)
 
     if not IsPedAPlayer(targetEntity) then return end
 
-    local boneGroup = bonemap.getGroupWithFallback(data.hitComponent, true)
+    local boneGroup = api.bonemap.getGroupWithFallback(data.hitComponent, true)
     local shooterPed = GetPlayerPed(sender)
     local inVehicle = IsPedInAnyVehicle(shooterPed, false)
 
-    local expectedDamage = presets.calculateDamage(data.weaponType, boneGroup, preset, inVehicle)
-    local withinBounds, variance = presets.validateDamage(data.weaponDamage, expectedDamage, preset)
+    local expectedDamage = api.presets.calculateDamage(data.weaponType, boneGroup, preset, inVehicle)
+    local withinBounds, variance = api.presets.validateDamage(data.weaponDamage, expectedDamage, preset)
 
-    damageValidator.updatePlayerStats(sender, boneGroup, preset)
+    api.damageValidator.updatePlayerStats(sender, boneGroup, preset)
 
     if not withinBounds then
-        damageValidator.handleDetection(sender, {
+        api.damageValidator.handleDetection(sender, {
             weapon = data.weaponType,
             boneGroup = boneGroup,
             reported = data.weaponDamage,
@@ -51,10 +51,10 @@ AddEventHandler('weaponDamageEvent', function(sender, data)
         })
 
         CancelEvent()
-        damageValidator.applyCorrectDamage(targetEntity, expectedDamage, sender)
+        api.damageValidator.applyCorrectDamage(targetEntity, expectedDamage, sender)
     else
         if config.antiCheat.logLevel == 'all' then
-            damageValidator.logDamageEvent(sender, data, {
+            api.damageValidator.logDamageEvent(sender, data, {
                 expected = expectedDamage,
                 variance = variance,
                 boneGroup = boneGroup
@@ -64,7 +64,7 @@ AddEventHandler('weaponDamageEvent', function(sender, data)
 end)
 
 -- Update player shot statistics
-function damageValidator.updatePlayerStats(source, boneGroup, preset)
+function api.damageValidator.updatePlayerStats(source, boneGroup, preset)
     if not validationState.playerStats[source] then
         validationState.playerStats[source] = {
             totalShots = 0,
@@ -88,13 +88,13 @@ function damageValidator.updatePlayerStats(source, boneGroup, preset)
         stats.headshotRate = stats.headshots / stats.totalShots
 
         if stats.headshotRate > preset.validation.maxHeadshotRate then
-            damageValidator.handleHeadshotRateDetection(source, stats, preset)
+            api.damageValidator.handleHeadshotRateDetection(source, stats, preset)
         end
     end
 end
 
 -- Handle suspicious headshot rate
-function damageValidator.handleHeadshotRateDetection(source, stats, preset)
+function api.damageValidator.handleHeadshotRateDetection(source, stats, preset)
     local detection = {
         type = 'headshot_rate',
         rate = stats.headshotRate,
@@ -112,16 +112,16 @@ function damageValidator.handleHeadshotRateDetection(source, stats, preset)
     ))
 
     if config.antiCheat.useDatabase and config.antiCheat.databaseExport then
-        damageValidator.logToDatabase(source, detection)
+        api.damageValidator.logToDatabase(source, detection)
     end
 
     if #stats.detections >= config.antiCheat.minDetections then
-        damageValidator.takeAction(source, 'headshot_rate', detection)
+        api.damageValidator.takeAction(source, 'headshot_rate', detection)
     end
 end
 
 -- Handle damage validation detection
-function damageValidator.handleDetection(source, detection)
+function api.damageValidator.handleDetection(source, detection)
     detection.type = 'damage_variance'
 
     if not validationState.playerStats[source] then
@@ -149,7 +149,7 @@ function damageValidator.handleDetection(source, detection)
     ))
 
     if config.antiCheat.useDatabase and config.antiCheat.databaseExport then
-        damageValidator.logToDatabase(source, detection)
+        api.damageValidator.logToDatabase(source, detection)
     end
 
     local detectionWindow = config.antiCheat.detectionWindow
@@ -163,12 +163,12 @@ function damageValidator.handleDetection(source, detection)
     end
 
     if recentDetections >= config.antiCheat.minDetections then
-        damageValidator.takeAction(source, 'damage_variance', detection)
+        api.damageValidator.takeAction(source, 'damage_variance', detection)
     end
 end
 
 -- Take action against player based on config
-function damageValidator.takeAction(source, detectionType, detection)
+function api.damageValidator.takeAction(source, detectionType, detection)
     local playerName = GetPlayerName(source)
     local reason = ('[Weapon Framework] Suspicious activity: %s'):format(detectionType)
 
@@ -182,7 +182,7 @@ function damageValidator.takeAction(source, detectionType, detection)
 end
 
 -- Apply correct damage to target
-function damageValidator.applyCorrectDamage(targetEntity, damage, attacker)
+function api.damageValidator.applyCorrectDamage(targetEntity, damage, attacker)
     local targetPed = NetworkGetEntityFromNetworkId(targetEntity)
     if targetPed and targetPed ~= 0 then
         ApplyDamageToPed(targetPed, damage, false)
@@ -193,7 +193,7 @@ function damageValidator.applyCorrectDamage(targetEntity, damage, attacker)
 end
 
 -- Log damage event
-function damageValidator.logDamageEvent(source, data, validation, status)
+function api.damageValidator.logDamageEvent(source, data, validation, status)
     if config.debug.code then
         _debug(('Damage Log] Player %d | Status: %s'):format(source, status))
         if validation then
@@ -205,7 +205,7 @@ function damageValidator.logDamageEvent(source, data, validation, status)
 end
 
 -- Log detection to database
-function damageValidator.logToDatabase(source, detection)
+function api.damageValidator.logToDatabase(source, detection)
     if not config.antiCheat.databaseExport then return end
 end
 
@@ -220,23 +220,23 @@ AddEventHandler('playerDropped', function()
 end)
 
 -- Get player statistics
-function damageValidator.getPlayerStats(source)
+function api.damageValidator.getPlayerStats(source)
     return validationState.playerStats[source]
 end
 
 -- Get detection log
-function damageValidator.getDetectionLog()
+function api.damageValidator.getDetectionLog()
     return validationState.detectionLog
 end
 
 -- Reset player statistics
-function damageValidator.resetPlayerStats(source)
+function api.damageValidator.resetPlayerStats(source)
     validationState.playerStats[source] = nil
     _debug(('[Damage Validator] Reset stats for player %d'):format(source))
 end
 
-exports('getPlayerStats', damageValidator.getPlayerStats)
-exports('getDetectionLog', damageValidator.getDetectionLog)
-exports('resetPlayerStats', damageValidator.resetPlayerStats)
+exports('getPlayerStats', api.damageValidator.getPlayerStats)
+exports('getDetectionLog', api.damageValidator.getDetectionLog)
+exports('resetPlayerStats', api.damageValidator.resetPlayerStats)
 
-return damageValidator
+return api.damageValidator

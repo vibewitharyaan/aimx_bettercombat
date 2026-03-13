@@ -1,9 +1,9 @@
-local tunerUi = {}
+api.tunerUi = {}
 local isOpen = false
 local testingRecoil = false
 
 -- Open tuner UI
-function tunerUi.open()
+function api.tunerUi.open()
     if isOpen then return end
 
     ui.focus(true, true)
@@ -17,7 +17,7 @@ function tunerUi.open()
 end
 
 -- Close tuner UI
-function tunerUi.close()
+function api.tunerUi.close()
     if not isOpen then return end
 
     ui.focus(false, false)
@@ -77,13 +77,13 @@ end)
 
 -- Close tuner via UI
 ui.registerCb('close', function(data)
-    tunerUi.close()
+    api.tunerUi.close()
     return { success = true }
 end)
 
 -- Server opens tuner for player
 RegisterNetEvent('weaponFramework:openTuner', function()
-    tunerUi.open()
+    api.tunerUi.open()
 end)
 
 -- Server sends updated weapon list
@@ -93,11 +93,11 @@ end)
 
 if config.debug.enabled then
     RegisterCommand('tuneropen', function()
-        tunerUi.open()
+        api.tunerUi.open()
     end, false)
 end
 
-exports('openTuner', tunerUi.open)
-exports('closeTuner', tunerUi.close)
+exports('openTuner', api.tunerUi.open)
+exports('closeTuner', api.tunerUi.close)
 
-return tunerUi
+return api.tunerUi
