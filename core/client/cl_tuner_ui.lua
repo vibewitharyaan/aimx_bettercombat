@@ -1,143 +1,103 @@
--- ============================================================================
--- WEAPON TUNER - CLIENT UI CONTROLLER
--- ============================================================================
--- Handles NUI communication and in-game weapon testing
--- ============================================================================
-
-local TunerUI = {}
+local tunerUi = {}
 local isOpen = false
 local testingRecoil = false
 
--- ============================================================================
--- TUNER OPEN/CLOSE
--- ============================================================================
-
----Open tuner UI
-function TunerUI.Open()
+-- Open tuner UI
+function tunerUi.open()
     if isOpen then return end
-    
-    SetNuiFocus(true, true)
-    SendNUIMessage({
-        action = 'open'
-    })
-    
+
+    ui.focus(true, true)
+    ui.sendMsg('open')
+
     isOpen = true
-    
+
     if config.debug.enabled then
         _debug('[Tuner UI] Opened')
     end
 end
 
----Close tuner UI
-function TunerUI.Close()
+-- Close tuner UI
+function tunerUi.close()
     if not isOpen then return end
-    
-    SetNuiFocus(false, false)
-    SendNUIMessage({
-        action = 'close'
-    })
-    
+
+    ui.focus(false, false)
+    ui.sendMsg('close')
+
     isOpen = false
     testingRecoil = false
-    
+
     if config.debug.enabled then
         _debug('[Tuner UI] Closed')
     end
 end
 
--- ============================================================================
--- NUI CALLBACKS
--- ============================================================================
-
----Get all weapons from config
-RegisterNUICallback('getWeapons', function(data, cb)
+-- Get all weapons from config
+ui.registerCb('getWeapons', function(data)
     local weaponList = {}
-    
+
     for hash, weapon in pairs(config.weapons) do
         weaponList[tostring(hash)] = weapon
     end
-    
-    cb({ weapons = weaponList })
+
+    return { weapons = weaponList }
 end)
 
----Test recoil values in real-time
-RegisterNUICallback('testRecoil', function(data, cb)
+-- Test recoil values in real-time
+ui.registerCb('testRecoil', function(data)
     testingRecoil = true
-    
+
     local ped = cache.ped
     local weapon = cache.weapon
-    
+
     if not weapon then
-        cb({ success = false, message = 'No weapon equipped' })
-        return
+        return { success = false, message = 'No weapon equipped' }
     end
-    
+
     -- Apply test recoil values
     SetWeaponRecoilShakeAmplitude(weapon, data.baseRecoil or 0.15)
-    
+
     if config.debug.enabled then
         _debug(('[Tuner] Testing recoil: %.3f'):format(data.baseRecoil or 0.15))
     end
-    
-    -- Send confirmation back to UI
-    SendNUIMessage({
-        action = 'testRecoilFeedback'
-    })
-    
-    cb({ success = true })
+
+    ui.sendMsg('testRecoilFeedback')
+
+    return { success = true }
 end)
 
----Save weapon configuration to server
-RegisterNUICallback('saveWeapon', function(data, cb)
+-- Save weapon configuration to server
+ui.registerCb('saveWeapon', function(data)
     if not data.config then
-        cb({ success = false, message = 'Invalid configuration' })
-        return
+        return { success = false, message = 'Invalid configuration' }
     end
-    
-    -- Send to server for permanent saving
+
     TriggerServerEvent('weaponFramework:tuner:saveWeapon', data.config, data.preset)
-    
-    cb({ success = true })
+    return { success = true }
 end)
 
----Close tuner
-RegisterNUICallback('close', function(data, cb)
-    TunerUI.Close()
-    cb({ success = true })
+-- Close tuner via UI
+ui.registerCb('close', function(data)
+    tunerUi.close()
+    return { success = true }
 end)
 
--- ============================================================================
--- SERVER EVENTS
--- ============================================================================
-
----Server opens tuner for player
+-- Server opens tuner for player
 RegisterNetEvent('weaponFramework:openTuner', function()
-    TunerUI.Open()
+    tunerUi.open()
 end)
 
----Server sends updated weapon list
+-- Server sends updated weapon list
 RegisterNetEvent('weaponFramework:tuner:updateWeapons', function(weapons)
-    SendNUIMessage({
-        action = 'loadWeapons',
-        weapons = weapons
-    })
+    ui.sendMsg('loadWeapons', { weapons = weapons })
 end)
-
--- ============================================================================
--- KEYBIND (Optional - for quick access during development)
--- ============================================================================
 
 if config.debug.enabled then
     RegisterCommand('tuneropen', function()
-        TunerUI.Open()
+        tunerUi.open()
     end, false)
 end
 
--- ============================================================================
--- EXPORTS
--- ============================================================================
+exports('openTuner', tunerUi.open)
+exports('closeTuner', tunerUi.close)
 
-exports('openTuner', TunerUI.Open)
-exports('closeTuner', TunerUI.Close)
-
-return TunerUI
+return tunerUi

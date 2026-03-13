@@ -23,9 +23,10 @@ config.recoilDecayRate = 0.002
 
 -- Anti-Cheat Configuration
 config.antiCheat = {
-    enabled = false,         -- Set to true for production
-    logLevel = 'suspicious', -- 'none', 'suspicious', 'all'
-    action = 'log',          -- 'log', 'kick', 'ban'
+    enabled = false,               -- Set to true for production
+    logLevel = 'suspicious',       -- 'none', 'suspicious', 'all'
+    allowKick = false,
+    allowBan = false,
     minDetections = 5,
     detectionWindow = 300,
     useDatabase = false,

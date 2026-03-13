@@ -1,46 +1,15 @@
--- ============================================================================
--- WEAPON FRAMEWORK - SERVER PRESET MANAGER
--- ============================================================================
--- Manages preset assignment and tracking for players
--- Supports both single-preset and multi-preset modes
--- ============================================================================
+local presetManager = {}
 
-local PresetManager = {}
+local playerPresets = {}
 
--- ============================================================================
--- PRESET ASSIGNMENT STATE
--- ============================================================================
-
-local playerPresets = {
-    --[[
-    [source] = {
-        presetName = 'realistic',
-        assignedAt = timestamp,
-        assignedBy = 'system' or playerSource,
-        lobby = nil or 'lobby_name' (for multi-preset mode)
-    }
-    ]]--
-}
-
--- ============================================================================
--- PRESET ASSIGNMENT
--- ============================================================================
-
----Assign preset to player
----@param source number
----@param presetName string
----@param assignedBy string|number
----@param lobby string|nil
----@return boolean success
-function PresetManager.AssignPreset(source, presetName, assignedBy, lobby)
-    -- Validate preset exists
+-- Assign preset to player
+function presetManager.assignPreset(source, presetName, assignedBy, lobby)
     local preset = presets.get(presetName)
     if not preset then
         _error(('Invalid preset "%s"'):format(presetName))
         return false
     end
     
-    -- Store assignment
     playerPresets[source] = {
         presetName = presetName,
         assignedAt = os.time(),
@@ -48,60 +17,42 @@ function PresetManager.AssignPreset(source, presetName, assignedBy, lobby)
         lobby = lobby
     }
     
-    -- Notify client
     TriggerClientEvent('weaponFramework:setPreset', source, presetName)
     
-    if config.debug.enabled then
+    if config.debug.code then
         _debug(('Assigned "%s" to player %d'):format(presetName, source))
     end
     
     return true
 end
 
----Get player's active preset
----@param source number
----@return table|nil preset
-function PresetManager.GetPlayerPreset(source)
+-- Get player's active preset
+function presetManager.getPlayerPreset(source)
     local assignment = playerPresets[source]
     if not assignment then return nil end
-    
     return presets.get(assignment.presetName)
 end
 
----Get player's preset name
----@param source number
----@return string|nil
-function PresetManager.GetPlayerPresetName(source)
+-- Get player's preset name
+function presetManager.getPlayerPresetName(source)
     local assignment = playerPresets[source]
     return assignment and assignment.presetName or nil
 end
 
----Get player's preset assignment info
----@param source number
----@return table|nil
-function PresetManager.GetPlayerAssignment(source)
+-- Get player's preset assignment info
+function presetManager.getPlayerAssignment(source)
     return playerPresets[source]
 end
 
--- ============================================================================
--- SINGLE-PRESET MODE
--- ============================================================================
-
----Initialize player with default preset (single-preset mode)
----@param source number
-function PresetManager.InitializePlayer(source)
+-- Initialize player with default preset (single-preset mode)
+function presetManager.initializePlayer(source)
     if config.mode == 'single' then
-        -- Assign default preset
-        PresetManager.AssignPreset(source, config.defaultPreset, 'system')
+        presetManager.assignPreset(source, config.defaultPreset, 'system')
     end
-    -- In multi-preset mode, server must explicitly assign via lobby system
 end
 
----Change global preset (single-preset mode only)
----@param presetName string
----@param changedBy number
----@return boolean success
-function PresetManager.ChangeGlobalPreset(presetName, changedBy)
+-- Change global preset (single-preset mode only)
+function presetManager.changeGlobalPreset(presetName, changedBy)
     if config.mode ~= 'single' then
         _error('Cannot change global preset in multi-preset mode')
         return false
@@ -113,42 +64,27 @@ function PresetManager.ChangeGlobalPreset(presetName, changedBy)
         return false
     end
     
-    -- Update config
     config.defaultPreset = presetName
     
-    -- Reassign all players
     for source in pairs(playerPresets) do
-        PresetManager.AssignPreset(source, presetName, changedBy)
+        presetManager.assignPreset(source, presetName, changedBy)
     end
     
-    _info(('Global preset changed to "%s" by player %d'):format(
-        presetName, changedBy
-    ))
+    _info(('Global preset changed to "%s" by player %d'):format(presetName, changedBy))
     
     return true
 end
 
--- ============================================================================
--- MULTI-PRESET MODE (LOBBY SYSTEM)
--- ============================================================================
-
----Assign preset by lobby (multi-preset mode)
----@param source number
----@param lobbyName string
----@param lobbyPreset string
----@return boolean success
-function PresetManager.AssignByLobby(source, lobbyName, lobbyPreset)
+-- Assign preset by lobby (multi-preset mode)
+function presetManager.assignByLobby(source, lobbyName, lobbyPreset)
     if config.mode ~= 'multi' then
-        _warn('AssignByLobby called in single-preset mode')
+        _warn('assignByLobby called in single-preset mode')
     end
-    
-    return PresetManager.AssignPreset(source, lobbyPreset, 'lobby_system', lobbyName)
+    return presetManager.assignPreset(source, lobbyPreset, 'lobby_system', lobbyName)
 end
 
----Get all players with a specific preset
----@param presetName string
----@return number[] sources
-function PresetManager.GetPlayersWithPreset(presetName)
+-- Get all players with a specific preset
+function presetManager.getPlayersWithPreset(presetName)
     local players = {}
     for source, assignment in pairs(playerPresets) do
         if assignment.presetName == presetName then
@@ -158,10 +94,8 @@ function PresetManager.GetPlayersWithPreset(presetName)
     return players
 end
 
----Get all players in a lobby
----@param lobbyName string
----@return number[] sources
-function PresetManager.GetPlayersInLobby(lobbyName)
+-- Get all players in a lobby
+function presetManager.getPlayersInLobby(lobbyName)
     local players = {}
     for source, assignment in pairs(playerPresets) do
         if assignment.lobby == lobbyName then
@@ -171,27 +105,16 @@ function PresetManager.GetPlayersInLobby(lobbyName)
     return players
 end
 
--- ============================================================================
--- PRESET RELOADING
--- ============================================================================
-
----Reload presets from config (for runtime changes)
-function PresetManager.ReloadPresets()
-    -- Force clients to recalculate
+-- Reload presets from config
+function presetManager.reloadPresets()
     for source in pairs(playerPresets) do
         TriggerClientEvent('weaponFramework:reloadRecoil', source)
     end
-    
     _info('Presets reloaded for all players')
 end
 
--- ============================================================================
--- STATISTICS
--- ============================================================================
-
----Get preset usage statistics
----@return table statistics
-function PresetManager.GetStatistics()
+-- Get preset usage statistics
+function presetManager.getStatistics()
     local stats = {
         totalPlayers = 0,
         presetCounts = {},
@@ -201,11 +124,9 @@ function PresetManager.GetStatistics()
     for source, assignment in pairs(playerPresets) do
         stats.totalPlayers = stats.totalPlayers + 1
         
-        -- Count by preset
         local preset = assignment.presetName
         stats.presetCounts[preset] = (stats.presetCounts[preset] or 0) + 1
         
-        -- Count by lobby (if multi-preset mode)
         if assignment.lobby then
             local lobby = assignment.lobby
             stats.lobbyCounts[lobby] = (stats.lobbyCounts[lobby] or 0) + 1
@@ -215,36 +136,27 @@ function PresetManager.GetStatistics()
     return stats
 end
 
--- ============================================================================
--- PLAYER EVENTS
--- ============================================================================
-
----Player joined server
+-- Player joined server
 RegisterNetEvent('weaponFramework:requestDefaultPreset', function()
     local source = source
-    PresetManager.InitializePlayer(source)
+    presetManager.initializePlayer(source)
 end)
 
----Player disconnected
+-- Player disconnected
 AddEventHandler('playerDropped', function()
     local source = source
     playerPresets[source] = nil
     
-    if config.debug.enabled then
+    if config.debug.code then
         _debug(('Cleaned up player %d'):format(source))
     end
 end)
 
--- ============================================================================
--- ADMIN COMMANDS
--- ============================================================================
-
----Admin command to change player preset
+-- Admin command to change player preset
 RegisterNetEvent('weaponFramework:admin:changePlayerPreset', function(targetSource, presetName)
     local source = source
     
-    -- Verify admin permission (handled by command registration)
-    if not PresetManager.AssignPreset(targetSource, presetName, source) then
+    if not presetManager.assignPreset(targetSource, presetName, source) then
         TriggerClientEvent('weaponFramework:notify', source, {
             type = 'error',
             message = ('Invalid preset: %s'):format(presetName)
@@ -258,11 +170,11 @@ RegisterNetEvent('weaponFramework:admin:changePlayerPreset', function(targetSour
     })
 end)
 
----Admin command to change global preset (single-preset mode)
+-- Admin command to change global preset (single-preset mode)
 RegisterNetEvent('weaponFramework:admin:changeGlobalPreset', function(presetName)
     local source = source
     
-    if not PresetManager.ChangeGlobalPreset(presetName, source) then
+    if not presetManager.changeGlobalPreset(presetName, source) then
         TriggerClientEvent('weaponFramework:notify', source, {
             type = 'error',
             message = 'Failed to change global preset'
@@ -275,19 +187,13 @@ RegisterNetEvent('weaponFramework:admin:changeGlobalPreset', function(presetName
         message = ('Global preset changed to: %s'):format(presetName)
     })
     
-    -- Broadcast to all players
     TriggerClientEvent('weaponFramework:notify', -1, {
         type = 'info',
         message = ('Server preset changed to: %s'):format(presetName)
     })
 end)
 
--- ============================================================================
--- INITIALIZATION
--- ============================================================================
-
 CreateThread(function()
-    -- Validate default preset
     if config.mode == 'single' then
         local defaultPreset = presets.get(config.defaultPreset)
         if not defaultPreset then
@@ -302,22 +208,15 @@ CreateThread(function()
     _info('Preset Manager Initialized')
 end)
 
--- ============================================================================
--- EXPORTS
--- ============================================================================
+exports('assignPreset', presetManager.assignPreset)
+exports('getPlayerPreset', presetManager.getPlayerPreset)
+exports('getPlayerPresetName', presetManager.getPlayerPresetName)
+exports('getPlayerAssignment', presetManager.getPlayerAssignment)
+exports('assignByLobby', presetManager.assignByLobby)
+exports('getPlayersWithPreset', presetManager.getPlayersWithPreset)
+exports('getPlayersInLobby', presetManager.getPlayersInLobby)
+exports('reloadPresets', presetManager.reloadPresets)
+exports('getStatistics', presetManager.getStatistics)
+exports('changeGlobalPreset', presetManager.changeGlobalPreset)
 
-exports('assignPreset', PresetManager.AssignPreset)
-exports('getPlayerPreset', PresetManager.GetPlayerPreset)
-exports('getPlayerPresetName', PresetManager.GetPlayerPresetName)
-exports('getPlayerAssignment', PresetManager.GetPlayerAssignment)
-exports('assignByLobby', PresetManager.AssignByLobby)
-exports('getPlayersWithPreset', PresetManager.GetPlayersWithPreset)
-exports('getPlayersInLobby', PresetManager.GetPlayersInLobby)
-exports('reloadPresets', PresetManager.ReloadPresets)
-exports('getStatistics', PresetManager.GetStatistics)
-exports('changeGlobalPreset', PresetManager.ChangeGlobalPreset)
-
--- Legacy compatibility
-exports('GetPlayerPreset', PresetManager.GetPlayerPreset)
-
-return PresetManager
+return presetManager

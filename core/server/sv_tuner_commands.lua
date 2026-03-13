@@ -1,53 +1,22 @@
--- ============================================================================
--- WEAPON FRAMEWORK - PERMISSION-GATED TUNER COMMANDS
--- ============================================================================
--- Uses ox_lib AddCommand for ACE-integrated permission checking
--- Only accessible to authorized admin/developer roles
--- ============================================================================
-
--- ============================================================================
--- TUNER ACCESS COMMAND
--- ============================================================================
-
+-- Tuner Access Command
 lib.addCommand(config.tuner.command, {
     help = 'Open weapon tuner interface (admin only)',
-    restricted = config.tuner.permission  -- e.g., 'group.admin'
+    restricted = config.tuner.permission
 }, function(source, args, raw)
-    -- Permission automatically validated by ox_lib
-    -- This code ONLY runs if player has the required ACE
-    
-    -- Open NUI tuner
     TriggerClientEvent('weaponFramework:openTuner', source)
-    
-    _info(('Player %d (%s) opened weapon tuner'):format(
-        source,
-        GetPlayerName(source)
-    ))
+    _info(('Player %d (%s) opened weapon tuner'):format(source, GetPlayerName(source)))
 end)
 
--- ============================================================================
--- TUNER SAVE HANDLER
--- ============================================================================
-
----Handle weapon configuration save from tuner
+-- Handle weapon configuration save from tuner
 RegisterNetEvent('weaponFramework:tuner:saveWeapon', function(data, presetName)
     local source = source
     
-    -- Verify player has permission
     if not IsPlayerAceAllowed(source, config.tuner.permission) then
         _warn(('SECURITY: Player %d attempted to save without permission'):format(source))
         return
     end
     
-    -- Log the save
-    _info(('Player %d saved weapon config for %s to preset %s'):format(
-        source,
-        data.hash,
-        presetName
-    ))
-    
-    -- Here you could save to database or file
-    -- For now, just log it - the exported code is the primary output
+    _info(('Player %d saved weapon config for %s to preset %s'):format(source, data.hash, presetName))
     
     TriggerClientEvent('ox_lib:notify', source, {
         type = 'success',
@@ -55,30 +24,18 @@ RegisterNetEvent('weaponFramework:tuner:saveWeapon', function(data, presetName)
     })
 end)
 
--- ============================================================================
--- PRESET MANAGEMENT COMMANDS
--- ============================================================================
-
+-- Assign preset to a player
 lib.addCommand('setpreset', {
     help = 'Assign preset to a player',
     params = {
-        {
-            name = 'target',
-            type = 'playerId',
-            help = 'Target player server ID'
-        },
-        {
-            name = 'preset',
-            type = 'string',
-            help = 'Preset name (realistic, competitive, hardcore, arcade)'
-        }
+        { name = 'target', type = 'playerId', help = 'Target player server ID' },
+        { name = 'preset', type = 'string', help = 'Preset name (realistic, competitive, hardcore, arcade)' }
     },
     restricted = config.tuner.permission
 }, function(source, args, raw)
     local targetSource = args.target
     local presetName = args.preset
     
-    -- Validate player exists
     local targetName = GetPlayerName(targetSource)
     if not targetName then
         TriggerClientEvent('ox_lib:notify', source, {
@@ -88,7 +45,6 @@ lib.addCommand('setpreset', {
         return
     end
     
-    -- Assign preset
     local success = exports[resName]:assignPreset(targetSource, presetName, source)
     
     if success then
@@ -104,19 +60,15 @@ lib.addCommand('setpreset', {
     end
 end)
 
+-- Change server-wide preset
 lib.addCommand('changeglobalpreset', {
     help = 'Change server-wide preset (single-preset mode only)',
     params = {
-        {
-            name = 'preset',
-            type = 'string',
-            help = 'Preset name'
-        }
+        { name = 'preset', type = 'string', help = 'Preset name' }
     },
     restricted = config.tuner.permission
 }, function(source, args, raw)
     local presetName = args.preset
-    
     local success = exports[resName]:changeGlobalPreset(presetName, source)
     
     if success then
@@ -132,17 +84,14 @@ lib.addCommand('changeglobalpreset', {
     end
 end)
 
--- ============================================================================
--- PRESET INFORMATION COMMANDS
--- ============================================================================
-
+-- List all available presets
 lib.addCommand('listpresets', {
     help = 'List all available presets',
     restricted = config.tuner.permission
 }, function(source, args, raw)
     local presetList = presets.getAll()
-    
     local message = 'Available Presets:\n'
+    
     for _, name in ipairs(presetList) do
         local preset = presets.get(name)
         message = message .. ('- %s: %s\n'):format(name, preset.description)
@@ -155,12 +104,12 @@ lib.addCommand('listpresets', {
     })
 end)
 
+-- Show preset usage statistics
 lib.addCommand('presetstats', {
     help = 'Show preset usage statistics',
     restricted = config.tuner.permission
 }, function(source, args, raw)
     local stats = exports[resName]:getStatistics()
-    
     local message = ('Preset Statistics:\nTotal Players: %d\n'):format(stats.totalPlayers)
     
     for preset, count in pairs(stats.presetCounts) do
@@ -181,23 +130,15 @@ lib.addCommand('presetstats', {
     })
 end)
 
--- ============================================================================
--- ANTI-CHEAT MANAGEMENT COMMANDS
--- ============================================================================
-
+-- View player combat statistics
 lib.addCommand('playerstats', {
     help = 'View player combat statistics',
     params = {
-        {
-            name = 'target',
-            type = 'playerId',
-            help = 'Target player server ID'
-        }
+        { name = 'target', type = 'playerId', help = 'Target player server ID' }
     },
     restricted = config.tuner.permission
 }, function(source, args, raw)
     local targetSource = args.target
-    
     local stats = exports[resName]:getPlayerStats(targetSource)
     
     if not stats then
@@ -221,19 +162,15 @@ lib.addCommand('playerstats', {
     })
 end)
 
+-- Reset player combat statistics
 lib.addCommand('resetstats', {
     help = 'Reset player combat statistics',
     params = {
-        {
-            name = 'target',
-            type = 'playerId',
-            help = 'Target player server ID'
-        }
+        { name = 'target', type = 'playerId', help = 'Target player server ID' }
     },
     restricted = config.tuner.permission
 }, function(source, args, raw)
     local targetSource = args.target
-    
     exports[resName]:resetPlayerStats(targetSource)
     
     TriggerClientEvent('ox_lib:notify', source, {
@@ -242,15 +179,11 @@ lib.addCommand('resetstats', {
     })
 end)
 
+-- View recent anti-cheat detections
 lib.addCommand('detectionlog', {
     help = 'View recent anti-cheat detections',
     params = {
-        {
-            name = 'count',
-            type = 'number',
-            help = 'Number of recent detections to show',
-            optional = true
-        }
+        { name = 'count', type = 'number', help = 'Number of recent detections to show', optional = true }
     },
     restricted = config.tuner.permission
 }, function(source, args, raw)
@@ -265,7 +198,6 @@ lib.addCommand('detectionlog', {
         return
     end
     
-    -- Get most recent detections
     local recent = {}
     for i = math.max(1, #log - count + 1), #log do
         table.insert(recent, log[i])
@@ -288,10 +220,7 @@ lib.addCommand('detectionlog', {
     })
 end)
 
--- ============================================================================
--- RELOAD COMMAND
--- ============================================================================
-
+-- Reload preset configuration for all players
 lib.addCommand('reloadpresets', {
     help = 'Reload preset configuration for all players',
     restricted = config.tuner.permission
@@ -304,31 +233,19 @@ lib.addCommand('reloadpresets', {
     })
 end)
 
--- ============================================================================
--- WEAPON INFO COMMANDS
--- ============================================================================
-
+-- Show weapon statistics
 lib.addCommand('weaponinfo', {
     help = 'Show weapon statistics',
     params = {
-        {
-            name = 'weapon',
-            type = 'string',
-            help = 'Weapon name (e.g., WEAPON_PISTOL)'
-        },
-        {
-            name = 'preset',
-            type = 'string',
-            help = 'Preset name (optional)',
-            optional = true
-        }
+        { name = 'weapon', type = 'string', help = 'Weapon name (e.g., WEAPON_PISTOL)' },
+        { name = 'preset', type = 'string', help = 'Preset name (optional)', optional = true }
     },
     restricted = config.tuner.permission
 }, function(source, args, raw)
     local weaponName = args.weapon
     local weaponHash = GetHashKey(weaponName)
-    
     local weapon = config.getWeapon(weaponHash)
+    
     if not weapon then
         TriggerClientEvent('ox_lib:notify', source, {
             type = 'error',
@@ -338,7 +255,6 @@ lib.addCommand('weaponinfo', {
     end
     
     local preset = args.preset and presets.get(args.preset) or presets.get(config.defaultPreset)
-    
     local message = ('Weapon: %s\n'):format(weapon.name)
     message = message .. ('Class: %s\n'):format(weapon.class)
     message = message .. ('Base Damage: %.1f\n'):format(weapon.baseDamage)
@@ -347,7 +263,6 @@ lib.addCommand('weaponinfo', {
     if preset then
         message = message .. ('\nWith Preset "%s":\n'):format(preset.name)
         
-        -- Calculate effective values
         local effectiveRecoil = presets.calculateRecoil(weaponHash, preset, false)
         local headDamage = presets.calculateDamage(weaponHash, 'head', preset, false)
         local torsoDamage = presets.calculateDamage(weaponHash, 'torso', preset, false)
@@ -363,10 +278,6 @@ lib.addCommand('weaponinfo', {
         duration = 10000
     })
 end)
-
--- ============================================================================
--- INITIALIZATION
--- ============================================================================
 
 CreateThread(function()
     _info(('Tuner Commands Registered with permission: %s'):format(config.tuner.permission))
