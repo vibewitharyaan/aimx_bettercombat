@@ -35,11 +35,8 @@ server_scripts {
 }
 
 files {
-    "locales/en.json",
-    "nui/**/*"
+    "locales/en.json"
 }
-
-ui_page "nui/index.html"
 
 dependencies { "ox_lib" }
 
