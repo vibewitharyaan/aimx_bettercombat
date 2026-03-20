@@ -1,43 +1,7 @@
---[[
-    PRESETS  —  recoil multipliers only.
-    ────────────────────────────────────────────────────────────────────────────
-    Damage is deliberately per-weapon in weapons.lua and is NOT part of a preset.
-    Damage values stay consistent. Only recoil feel changes between presets.
-
-    ── recoilMult ───────────────────────────────────────────────────────────────
-    Multiplier applied to every weapon's base up/side values at runtime.
-        0.0 = no recoil
-        1.0 = weapon config values as-is
-        2.0 = doubled
-
-    ── recoveryRate ─────────────────────────────────────────────────────────────
-    Degrees per second the camera returns toward the aim point after firing.
-    Higher = faster snap back.
-
-    ── recoveryDelay ────────────────────────────────────────────────────────────
-    Milliseconds after the last shot before recovery begins.
-    Gives automatic weapons a brief "hold" before they settle.
-
-    ── maxAccumulation ──────────────────────────────────────────────────────────
-    Maximum total upward pitch that can build up during sustained fire.
-    Once reached, further shots only add horizontal drift and camera shake.
-    0.0 = no cap (only use with very low recoilMult).
-
-    ── SWITCHING PRESETS AT RUNTIME ─────────────────────────────────────────────
-    Server-side — all players (single mode):
-        exports['better_combat']:setGlobalPreset('pvp_competitive')
-
-    Server-side — one player (multi mode):
-        exports['better_combat']:setPlayerPreset(source, 'pvp_competitive')
-
-    Admin command:
-        /setglobalpreset pvp_competitive
-        /setpreset <playerServerId> pvp_competitive
-]]
+-- Recoil presets. See docs/README.md for full field reference.
 
 config.presets = {
 
-    -- Default — good balanced starting point for any server.
     default = {
         label           = 'Default',
         recoilMult      = 1.0,
@@ -46,7 +10,7 @@ config.presets = {
         maxAccumulation = 14.0,
     },
 
-    -- ── RP presets ────────────────────────────────────────────────────────────
+    -- RP
 
     rp_mild = {
         label           = 'RP — Mild',
@@ -72,7 +36,7 @@ config.presets = {
         maxAccumulation = 18.0,
     },
 
-    -- ── PvP presets ───────────────────────────────────────────────────────────
+    -- PvP
 
     pvp_competitive = {
         label           = 'PvP — Competitive',

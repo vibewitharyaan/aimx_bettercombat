@@ -1,116 +1,191 @@
 # better_combat
 
-A clean weapon recoil and damage system for FiveM. Works on both RP and PvP servers.
+A weapon recoil and damage system for FiveM servers. It controls how the camera moves when you shoot and how much damage each weapon deals. Works for both RP and PvP servers.
 
 ---
 
 ## What it does
 
-- Controls how much the camera kicks when you fire a weapon
-- Controls how much damage each weapon deals
-- Separates recoil for first-person, third-person, and drive-by shooting so each feels right
-- Lets you switch recoil styles (presets) live without restarting the server
-- Includes an in-game tuner menu so you can adjust values on the fly and save them
+When a player fires a weapon, the camera kicks upward slightly — just like in real life. The script controls how strong that kick is, how quickly the camera settles back, and how much damage the weapon deals. Everything is fully adjustable without touching any code.
+
+It also separates recoil depending on how you are playing:
+
+- **First-person** — lower kick, because the same movement feels much stronger in first-person
+- **Third-person** — standard kick values
+- **In a vehicle** — higher kick, because drive-by shooting is harder to control
 
 ---
 
 ## Features
 
-- **Separate FPP / TPP / Drive-by recoil** — each perspective has its own values so none of them feel broken
-- **Organic recoil** — each shot kicks slightly differently, just like on popular servers
-- **Movement penalty** — sprinting while shooting makes recoil slightly worse
-- **Preset system** — switch between recoil styles (mild, competitive, hardcore, etc.) instantly
-- **Live tuner** — adjust any value in-game with a menu, no file editing needed while testing
-- **Addon weapon support** — custom / modded weapons automatically get a sensible fallback
-- **Zero complexity** — no event interception, no bone detection, no server lag on shots
+- Separate recoil values for first-person, third-person, and drive-by — each feels right on its own
+- Each shot kicks slightly differently every time — not robotic, feels organic and natural
+- Moving or sprinting while shooting increases recoil slightly
+- Full preset system — switch between different recoil styles instantly, no server restart needed
+- Live in-game tuner — change any value while playing and feel the result immediately
+- Works with custom and addon weapons automatically
+- No performance impact when no weapon is held
 
 ---
 
-## Installation
+## Presets
 
-1. Drop the `better_combat` folder into your server's `resources` directory
-2. Add this line to your `server.cfg`:
-   ```
-   ensure better_combat
-   ```
-3. Open `config/config.lua` and set your mode and default preset (explained below)
-4. Start your server — done
+A preset is a recoil style. Instead of editing weapon values one by one, you switch the whole feel of the server in one command. Damage is never changed by switching a preset — only how the camera behaves when you shoot.
+
+**Presets included out of the box:**
+
+| Preset name       | What it feels like                                             |
+| ----------------- | -------------------------------------------------------------- |
+| `default`         | Balanced — good starting point for any server                  |
+| `rp_mild`         | Very easy to control, forgiving, fights last longer            |
+| `rp_standard`     | Moderate recoil for roleplay servers                           |
+| `rp_realistic`    | Punishing recoil, requires trigger discipline                  |
+| `pvp_competitive` | Low recoil, camera snaps back fast — good for competitive play |
+| `pvp_standard`    | Balanced for PvP                                               |
+| `pvp_hardcore`    | High recoil, slow recovery — skill-based                       |
+| `pvp_no_recoil`   | Zero recoil — useful for aim training or shooting ranges       |
 
 ---
 
-## Configuration
+## How to set up
 
-### `config/config.lua` — the main settings file
+Open `config/config.lua`. This is the only file you need to touch to get started.
 
-This is the only file most server owners need to touch.
+**Pick your mode:**
 
 ```lua
-config.mode          = 'single'   -- see below
-config.defaultPreset = 'default'  -- which preset everyone starts with
+config.mode = 'single'
 ```
 
-**Mode options:**
+- `'single'` — everyone on the server uses the same preset. Best for RP servers.
+- `'multi'` — different players can have different presets. Best for PvP servers with zones or game modes.
 
-| Mode       | Use it when                                                                  |
-| ---------- | ---------------------------------------------------------------------------- |
-| `'single'` | Everyone on the server uses the same recoil preset. Good for RP servers.     |
-| `'multi'`  | Different players or zones can have different presets. Good for PvP servers. |
+**Pick your starting preset:**
 
-**Tuner settings:**
+```lua
+config.defaultPreset = 'default'
+```
+
+Change `'default'` to any preset name from the list above.
+
+**Set who can use admin commands:**
 
 ```lua
 config.tuner = {
-    command    = 'tuner',        -- the chat command to open the tuner menu
-    permission = 'group.admin',  -- who is allowed to use it
+    command    = 'tuner',
+    permission = 'group.admin',
 }
 ```
 
-**Debug mode:**
-
-```lua
-config.debug = false  -- set to true to see recoil values in F8 while testing
-```
+Change `'group.admin'` to whatever ace permission your admins have.
 
 ---
 
-### `config/weapons.lua` — weapon damage and recoil values
+## Weapon settings explained
 
-Each weapon has its own entry. Here is what each field means:
+Every weapon has its own entry in `config/weapons.lua`. Here is what each value means:
 
 ```lua
-[GetHashKey('WEAPON_ASSAULTRIFLE')] = {
-    hashStr  = 'WEAPON_ASSAULTRIFLE',  -- the weapon name, used when exporting from the tuner
-    name     = 'Assault Rifle',        -- display name, shown in the tuner menu
-    class    = 'rifle',                -- weapon category (pistol, smg, rifle, shotgun, mg, sniper)
-    damage   = 1.0,                    -- damage multiplier (explained below)
-    recoil   = {
-        fpp     = { up = 0.65, side = 0.22 },   -- first-person recoil
-        tpp     = { up = 1.20, side = 0.40 },   -- third-person recoil
-        driveby = { up = 2.20, side = 0.85 },   -- in-vehicle recoil
-    },
-    shake    = 0.10,   -- camera shake feel (0.0 = none, 1.0 = maximum)
-    fireRate = 600,    -- rounds per minute, controls how fast recoil kicks apply
+damage = 1.0
+```
+
+How much damage the weapon deals per bullet.
+
+- `1.0` = exactly GTA's default damage
+- `0.7` = 30% less damage — fights last longer, good for RP
+- `1.4` = 40% more damage — faster kills, good for PvP
+- `0.25` = low damage — roughly 4 shots to down on the body, 2 shots to the head
+
+> GTA automatically makes headshots deal more damage (roughly 2.5× more). You do not need to configure this separately — it just works.
+
+---
+
+```lua
+recoil = {
+    fpp     = { up = 0.65, side = 0.22 },
+    tpp     = { up = 1.20, side = 0.40 },
+    driveby = { up = 2.20, side = 0.85 },
 },
 ```
 
-**Damage values explained:**
+These are the base recoil values per perspective.
 
-| Value  | What it means                                                                                             |
-| ------ | --------------------------------------------------------------------------------------------------------- |
-| `1.0`  | Default GTA damage — unchanged                                                                            |
-| `0.7`  | 30% less damage — fights last longer (good for RP)                                                        |
-| `1.4`  | 40% more damage — faster kills (good for PvP)                                                             |
-| `0.25` | Low damage — roughly 4 body shots to down, 2 headshots (GTA applies its own headshot bonus automatically) |
+- `up` — how many degrees the camera kicks upward on each shot. Higher = more kick.
+- `side` — how much the camera can drift left or right randomly. Higher = more wobble.
+- `fpp` = first-person view
+- `tpp` = third-person view
+- `driveby` = shooting from inside a vehicle
 
-**Recoil values explained:**
+---
 
-- `up` — how many degrees the camera kicks upward each shot. Higher = more kick.
-- `side` — maximum random sideways drift each shot. Higher = more random wobble.
-- FPP values are always lower than TPP because the same movement feels more intense in first-person.
+```lua
+shake = 0.10
+```
 
-**How to add a new weapon:**
+The physical camera shake feel when you fire. Does not rotate the camera — just adds a tactile kick. Range is `0.0` to `1.0`.
 
-Copy any existing entry, paste it below, and change the weapon name and values:
+---
+
+```lua
+fireRate = 600
+```
+
+How many rounds per minute the weapon fires. This controls how fast recoil kicks are applied on automatic weapons. Match this to the real weapon's fire rate for accurate feel.
+
+---
+
+## Preset settings explained
+
+Every preset in `config/presets.lua` has these values:
+
+```lua
+recoilMult = 1.0
+```
+
+Multiplies all weapon recoil values. Think of it as a global volume knob for recoil.
+
+- `0.0` = no recoil at all
+- `1.0` = weapon values as configured
+- `2.0` = double the recoil
+
+---
+
+```lua
+recoveryRate = 55.0
+```
+
+How fast the camera drifts back to where you were aiming after you stop shooting. Measured in degrees per second.
+
+- Low number = slow, floaty return
+- High number = quick snap back
+
+---
+
+```lua
+recoveryDelay = 180
+```
+
+How many milliseconds the camera waits before it starts returning after your last shot. Useful for making automatic weapons feel like they hold their position briefly before settling.
+
+- `0` = recovery starts immediately
+- `300` = waits 0.3 seconds before returning
+
+---
+
+```lua
+maxAccumulation = 14.0
+```
+
+The maximum degrees the camera can drift upward during sustained fire. Once this ceiling is hit, further shots only add sideways wobble — the camera stops going higher.
+
+- Low number = more controlled spray
+- High number = camera walks far up during long bursts
+
+---
+
+## Adding a new weapon
+
+Open `config/weapons.lua`, copy any existing entry, paste it at the bottom of the list, and change the weapon name and values. Example:
 
 ```lua
 [GetHashKey('WEAPON_CARBINERIFLE')] = {
@@ -128,34 +203,13 @@ Copy any existing entry, paste it below, and change the weapon name and values:
 },
 ```
 
-> **Addon / custom weapons** — if a weapon isn't listed here, the script automatically falls back to its weapon group (pistol group, rifle group, etc.) using the values in `config.weaponGroups` at the bottom of the file. You don't need to do anything for this to work.
+Custom or addon weapons that are not listed are handled automatically using their weapon type group. They will not error — they just get a generic fallback.
 
 ---
 
-### `config/presets.lua` — recoil styles
+## Adding a new preset
 
-Presets control how recoil feels globally. They don't change damage — only the recoil behaviour.
-
-```lua
-default = {
-    label           = 'Default',   -- display name shown in commands and notifications
-    recoilMult      = 1.0,         -- multiplies all weapon recoil values (0.0 = no recoil, 2.0 = double)
-    recoveryRate    = 55.0,        -- how fast the camera returns after firing (degrees per second)
-    recoveryDelay   = 180,         -- milliseconds before recovery starts after last shot
-    maxAccumulation = 14.0,        -- maximum degrees the camera can drift up during sustained fire
-},
-```
-
-**Quick reference:**
-
-| Field             | Lower value                 | Higher value                  |
-| ----------------- | --------------------------- | ----------------------------- |
-| `recoilMult`      | Less kick                   | More kick                     |
-| `recoveryRate`    | Camera returns slowly       | Camera snaps back fast        |
-| `recoveryDelay`   | Recovery starts immediately | Camera holds before returning |
-| `maxAccumulation` | Spray is more controlled    | Spray walks further up        |
-
-**How to add a new preset:**
+Open `config/presets.lua` and add a new block anywhere inside the list:
 
 ```lua
 my_custom_preset = {
@@ -167,103 +221,56 @@ my_custom_preset = {
 },
 ```
 
-Then set it as default or assign it to players using the commands below.
+The `label` is what shows in notifications and the tuner menu. The name on the left (`my_custom_preset`) is what you use in commands and exports.
 
 ---
 
 ## Admin commands
 
-All commands require the permission set in `config.tuner.permission` (default: `group.admin`).
-
-| Command                        | What it does                                              |
-| ------------------------------ | --------------------------------------------------------- |
-| `/tuner`                       | Opens the live tuner menu for your weapon                 |
-| `/setglobalpreset <name>`      | Switches every player on the server to a preset instantly |
-| `/setpreset <playerid> <name>` | Assigns a preset to one specific player                   |
-| `/listpresets`                 | Prints all available preset names to your F8 console      |
-
-**Example:**
-
-```
-/setglobalpreset pvp_competitive
-/setpreset 5 rp_mild
-```
+| Command                        | What it does                                                  |
+| ------------------------------ | ------------------------------------------------------------- |
+| `/tuner`                       | Opens the live tuner for the weapon you are currently holding |
+| `/setglobalpreset <name>`      | Switches every player on the server to a preset right now     |
+| `/setpreset <playerid> <name>` | Assigns a preset to one specific player                       |
+| `/listpresets`                 | Shows all available preset names in your F8 console           |
 
 ---
 
 ## Live tuner
 
-The tuner lets you adjust recoil and damage values in real time without touching any files.
+The tuner lets you adjust every single value while you are in-game and feel the result immediately — no editing files, no restarting anything.
 
-1. Equip the weapon you want to tune
-2. Run `/tuner` in chat
-3. Click any value in the menu to change it — the change applies instantly
-4. Fire the weapon to feel the result
-5. When happy, click **Export snippet to F8** — this prints the final values to your F8 console
-6. Copy those values into the correct config file to make them permanent
-7. Click **Reset** at any time to go back to the original config values
+1. Hold the weapon you want to tune
+2. Type `/tuner` in chat
+3. Click any value in the menu
+4. Type a new number and confirm
+5. Fire the weapon — the change is already live
+6. Repeat until it feels right
+7. Click **Export snippet to F8** — a ready-to-paste block of code appears in your F8 console
+8. Copy that block into the config file to make it permanent
+9. Click **Reset** at any time to undo all changes and go back to the saved config values
 
 ---
 
-## Switching presets from another resource
+## Switching presets from your own scripts
 
-If you want to assign presets based on zones, game modes, or other logic, use these exports from your own resource:
+If you want to change presets automatically based on zones, events, or game modes:
 
 ```lua
--- Assign a preset to one player (use their server ID)
+-- Give one player a specific preset
 exports['better_combat']:setPlayerPreset(source, 'pvp_competitive')
 
--- Switch every player to a preset at once
+-- Switch every player on the server at once
 exports['better_combat']:setGlobalPreset('rp_mild')
 
--- Get the current preset name for a player
+-- Check what preset a player currently has
 local name = exports['better_combat']:getPlayerPreset(source)
 ```
 
 ---
 
-## Included presets
-
-| Preset name       | Description                                 |
-| ----------------- | ------------------------------------------- |
-| `default`         | Balanced starting point                     |
-| `rp_mild`         | Easy recoil, forgiving, long fights         |
-| `rp_standard`     | Moderate recoil for RP                      |
-| `rp_realistic`    | Punishing recoil, requires discipline       |
-| `pvp_competitive` | Low recoil, fast recovery, competitive feel |
-| `pvp_standard`    | Balanced PvP recoil                         |
-| `pvp_hardcore`    | High recoil, slow recovery, skill-based     |
-| `pvp_no_recoil`   | Zero recoil, useful for aim training ranges |
-
----
-
 ## Headshot vs body shot damage
 
-The script does not need any special headshot detection code. GTA's engine already applies a headshot damage bonus automatically (roughly ×2.5). You control the ratio by tuning the `damage` value per weapon.
+The script does not need any special headshot code. GTA already applies roughly 2.5× more damage on headshots automatically. You control how many shots it takes by adjusting the `damage` value per weapon.
 
-**Example — 4 body shots / 2 headshots:**
-Set `damage = 0.25` on the weapon. Body shots deal ~25 HP each. GTA's headshot bonus brings that to ~62 HP, which downs in 2 shots.
-
-Tune this live using `/tuner` so you can feel the result immediately.
-
----
-
-## File structure
-
-```
-better_combat/
-├── fxmanifest.lua              — resource manifest, do not edit
-├── config/
-│   ├── config.lua              — main settings (mode, preset, tuner permission)
-│   ├── weapons.lua             — per-weapon damage and recoil values
-│   └── presets.lua             — recoil style presets
-└── core/
-    ├── client/
-    │   ├── cl_main.lua         — weapon detection and damage modifier
-    │   ├── cl_recoil.lua       — recoil loop
-    │   └── cl_tuner.lua        — in-game tuner menu
-    └── server/
-        └── sv_main.lua         — preset management and admin commands
-```
-
-The only files you ever need to edit are the three inside `config/`.
+If you want roughly 4 body shots and 2 headshots to down someone, set `damage = 0.25` on that weapon. Use the live tuner to test it in real time until it feels right.

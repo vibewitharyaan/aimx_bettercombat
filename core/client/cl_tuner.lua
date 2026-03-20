@@ -1,32 +1,7 @@
---[[
-    cl_tuner.lua — live recoil / damage tuner via ox_lib menu.
-
-    ── WORKFLOW ─────────────────────────────────────────────────────────────────
-    1. Admin runs /tuner → server validates ACE, fires resName:openTuner
-    2. ox_lib menu opens with every value for the current weapon + preset
-    3. Click any row → lib.inputDialog for that single field
-    4. Value is written into combatState.weaponOverride / presetOverride
-    5. cl_recoil picks up overrides immediately — no restart needed
-    6. "Export" prints a paste-ready Lua snippet to the F8 console
-    7. "Reset" clears all overrides and restores original config values
-    8. Running /tuner while open closes it (toggle)
-
-    ── OX_LIB MENU PATTERN ──────────────────────────────────────────────────────
-    lib.registerMenu(data, cb)  registers the menu and its callback.
-    lib.showMenu(id)            opens it.
-    To refresh after a value change: re-call lib.registerMenu (same id
-    overwrites) then lib.showMenu. The callback runs in a coroutine so
-    lib.inputDialog (which yields) is safe to call directly.
-
-    ── OVERRIDES ────────────────────────────────────────────────────────────────
-    Overrides are shallow copies of config tables. The Config tables themselves
-    are never mutated. Overrides are cleared on weapon switch or preset change.
-]]
-
+-- Live recoil and damage tuner. Opened via /tuner (server validates ACE first).
 local MENU_ID = 'better_combat_tuner'
 
--- ── Clone helpers ─────────────────────────────────────────────────────────────
-
+-- Shallow-clones weapon data so config tables are never mutated
 local function cloneWeapon(wd)
     return {
         hashStr  = wd.hashStr,
@@ -43,6 +18,7 @@ local function cloneWeapon(wd)
     }
 end
 
+-- Shallow-clones preset data so config tables are never mutated
 local function clonePreset(p)
     return {
         label           = p.label,
@@ -53,6 +29,7 @@ local function clonePreset(p)
     }
 end
 
+-- Creates override tables on first edit if they don't exist yet
 local function ensureOverrides()
     if combatState.weaponData and not combatState.weaponOverride then
         combatState.weaponOverride = cloneWeapon(combatState.weaponData)
@@ -62,8 +39,7 @@ local function ensureOverrides()
     end
 end
 
--- ── Field writers ─────────────────────────────────────────────────────────────
-
+-- Writes a single tuned field into the override tables
 local function writeField(field, value)
     ensureOverrides()
     local wo = combatState.weaponOverride
@@ -86,9 +62,7 @@ local function writeField(field, value)
         wo.fireRate = value
     elseif field == 'damage' and wo then
         wo.damage = value
-        if combatState.weaponHash then
-            SetWeaponDamageModifier(combatState.weaponHash, value)
-        end
+        if combatState.weaponHash then SetWeaponDamageModifier(combatState.weaponHash, value) end
     elseif field == 'p.recoilMult' and po then
         po.recoilMult = value
     elseif field == 'p.recoveryRate' and po then
@@ -100,19 +74,15 @@ local function writeField(field, value)
     end
 end
 
--- ── Export snippet ────────────────────────────────────────────────────────────
-
+-- Prints current override values as paste-ready Lua to the F8 console
 local function exportSnippet()
     local wd = combatState.weaponOverride or combatState.weaponData
     local pv = combatState.presetOverride or combatState.preset
-    if not wd then
-        print('[Tuner] No weapon equipped — nothing to export.')
-        return
-    end
-    local r = wd.recoil
+    if not wd then return end
+    local r     = wd.recoil
     local lines = {
         '',
-        '-- ┌─ Weapon  (config/weapons.lua) ──────────────────────────────────────┐',
+        '-- Weapon (config/weapons.lua)',
         ("[GetHashKey('%s')] = {"):format(wd.hashStr or 'WEAPON_UNKNOWN'),
         ("    hashStr  = '%s',"):format(wd.hashStr or 'WEAPON_UNKNOWN'),
         ("    name     = '%s',"):format(wd.name),
@@ -126,80 +96,75 @@ local function exportSnippet()
         ("    shake    = %.2f,"):format(wd.shake),
         ("    fireRate = %d,"):format(wd.fireRate),
         '},',
-        '-- └──────────────────────────────────────────────────────────────────────┘',
     }
     if pv then
         lines[#lines + 1] = ''
-        lines[#lines + 1] = '-- ┌─ Preset  (config/presets.lua) ───────────────────────────────────────┐'
+        lines[#lines + 1] = '-- Preset (config/presets.lua)'
         lines[#lines + 1] = ("    recoilMult      = %.2f,"):format(pv.recoilMult)
         lines[#lines + 1] = ("    recoveryRate    = %.1f,"):format(pv.recoveryRate)
         lines[#lines + 1] = ("    recoveryDelay   = %d,"):format(pv.recoveryDelay)
         lines[#lines + 1] = ("    maxAccumulation = %.1f,"):format(pv.maxAccumulation)
-        lines[#lines + 1] = '-- └──────────────────────────────────────────────────────────────────────┘'
         lines[#lines + 1] = ''
     end
     print(table.concat(lines, '\n'))
-    lib.notify({ title = 'Tuner', description = 'Snippet printed to F8 console', type = 'success', duration = 4000 })
+    lib.notify({ title = 'Tuner', description = 'Snippet printed to F8', type = 'success', duration = 3000 })
 end
 
--- ── Menu builder ──────────────────────────────────────────────────────────────
-
-local function mkRow(label, field, current, minV, maxV, fmt)
-    fmt = fmt or '%.2f'
-    return {
-        label       = (label .. '  ^5' .. fmt .. '^7'):format(current),
-        description = ('min %s  →  max %s   |   click to edit'):format(tostring(minV), tostring(maxV)),
-        args        = { field = field, current = current, minV = minV, maxV = maxV, label = label },
-    }
-end
-
+-- Builds the option list for the current weapon and preset state
 local function buildOptions()
     local wd = combatState.weaponOverride or combatState.weaponData
     local pv = combatState.presetOverride or combatState.preset
 
     if not combatState.weaponHash or not wd then
+        return { { label = '^8No weapon equipped^7', description = 'Equip a weapon then run /tuner again.', disabled = true } }
+    end
+
+    local r = wd.recoil
+    local function row(label, field, val, min, max, fmt)
+        fmt = fmt or '%.2f'
         return {
-            { label = '^8No weapon equipped^7', description = 'Equip a weapon then run /tuner again.', disabled = true },
+            label       = (label .. '  ^5' .. fmt .. '^7'):format(val),
+            description = ('min %s  →  max %s'):format(tostring(min), tostring(max)),
+            args        = { field = field, current = val, minV = min, maxV = max, label = label },
         }
     end
 
-    local r       = wd.recoil
-    local opts    = {
+    local opts = {
         { label = ('^3%s^7   preset: ^5%s^7'):format(wd.name, pv and pv.label or '—'), disabled = true },
-        { label = '^4───  Recoil  ──────────────────────────────────^7', disabled = true },
+        { label = '^4── Recoil ──────────────────────────────────^7', disabled = true },
     }
 
-    opts[#opts + 1] = mkRow('FPP    Vertical', 'fpp.up', r.fpp.up, 0.0, 10.0)
-    opts[#opts + 1] = mkRow('FPP    Horizontal', 'fpp.side', r.fpp.side, 0.0, 5.0)
-    opts[#opts + 1] = mkRow('TPP    Vertical', 'tpp.up', r.tpp.up, 0.0, 10.0)
-    opts[#opts + 1] = mkRow('TPP    Horizontal', 'tpp.side', r.tpp.side, 0.0, 5.0)
-    opts[#opts + 1] = mkRow('Driveby Vertical', 'driveby.up', r.driveby.up, 0.0, 15.0)
-    opts[#opts + 1] = mkRow('Driveby Horizontal', 'driveby.side', r.driveby.side, 0.0, 6.0)
-    opts[#opts + 1] = mkRow('Camera Shake', 'shake', wd.shake, 0.0, 1.0)
-    opts[#opts + 1] = mkRow('Fire Rate (RPM)', 'fireRate', wd.fireRate, 10, 2000, '%d')
+    opts[#opts + 1] = row('FPP    Vertical', 'fpp.up', r.fpp.up, 0.0, 10.0)
+    opts[#opts + 1] = row('FPP    Horizontal', 'fpp.side', r.fpp.side, 0.0, 5.0)
+    opts[#opts + 1] = row('TPP    Vertical', 'tpp.up', r.tpp.up, 0.0, 10.0)
+    opts[#opts + 1] = row('TPP    Horizontal', 'tpp.side', r.tpp.side, 0.0, 5.0)
+    opts[#opts + 1] = row('Driveby Vertical', 'driveby.up', r.driveby.up, 0.0, 15.0)
+    opts[#opts + 1] = row('Driveby Horizontal', 'driveby.side', r.driveby.side, 0.0, 6.0)
+    opts[#opts + 1] = row('Camera Shake', 'shake', wd.shake, 0.0, 1.0)
+    opts[#opts + 1] = row('Fire Rate (RPM)', 'fireRate', wd.fireRate, 10, 2000, '%d')
 
-    opts[#opts + 1] = { label = '^4───  Damage  ──────────────────────────────────^7', disabled = true }
-    opts[#opts + 1] = mkRow('Damage Modifier', 'damage', wd.damage, 0.05, 5.0)
+    opts[#opts + 1] = { label = '^4── Damage ──────────────────────────────────^7', disabled = true }
+    opts[#opts + 1] = row('Damage Modifier', 'damage', wd.damage, 0.05, 5.0)
 
-    opts[#opts + 1] = { label = '^4───  Active Preset  ───────────────────────────^7', disabled = true }
+    opts[#opts + 1] = { label = '^4── Active Preset ───────────────────────────^7', disabled = true }
+
     if pv then
-        opts[#opts + 1] = mkRow('Recoil Scale', 'p.recoilMult', pv.recoilMult, 0.0, 5.0)
-        opts[#opts + 1] = mkRow('Recovery Rate  °/s', 'p.recoveryRate', pv.recoveryRate, 1.0, 300.0, '%.1f')
-        opts[#opts + 1] = mkRow('Recovery Delay  ms', 'p.recoveryDelay', pv.recoveryDelay, 0, 2000, '%d')
-        opts[#opts + 1] = mkRow('Max Accum  °', 'p.maxAccumulation', pv.maxAccumulation, 0.0, 60.0, '%.1f')
+        opts[#opts + 1] = row('Recoil Scale', 'p.recoilMult', pv.recoilMult, 0.0, 5.0)
+        opts[#opts + 1] = row('Recovery Rate  °/s', 'p.recoveryRate', pv.recoveryRate, 1.0, 300.0, '%.1f')
+        opts[#opts + 1] = row('Recovery Delay  ms', 'p.recoveryDelay', pv.recoveryDelay, 0, 2000, '%d')
+        opts[#opts + 1] = row('Max Accum  °', 'p.maxAccumulation', pv.maxAccumulation, 0.0, 60.0, '%.1f')
     else
         opts[#opts + 1] = { label = '^8No preset active^7', disabled = true }
     end
 
-    opts[#opts + 1] = { label = '^4───  Actions  ────────────────────────────────^7', disabled = true }
+    opts[#opts + 1] = { label = '^4── Actions ─────────────────────────────────^7', disabled = true }
     opts[#opts + 1] = { label = 'Reset to config values', args = { action = 'reset' } }
     opts[#opts + 1] = { label = 'Export snippet to F8', args = { action = 'export' } }
 
     return opts
 end
 
--- ── Open / refresh ────────────────────────────────────────────────────────────
-
+-- Registers and opens the tuner menu, re-registering refreshes the values
 local function openTuner()
     lib.registerMenu({
         id       = MENU_ID,
@@ -230,13 +195,12 @@ local function openTuner()
 
         local result = lib.inputDialog('Edit: ' .. args.label, {
             {
-                type        = 'number',
-                label       = ('Current: %s   |   min %s   max %s'):format(
+                type = 'number',
+                label = ('Current: %s  |  min %s  max %s'):format(
                     tostring(args.current), tostring(args.minV), tostring(args.maxV)),
-                default     = args.current,
-                min         = args.minV,
-                max         = args.maxV,
-                placeholder = tostring(args.current),
+                default = args.current,
+                min = args.minV,
+                max = args.maxV
             },
         })
 
@@ -251,8 +215,7 @@ local function openTuner()
     lib.showMenu(MENU_ID)
 end
 
--- ── Entry point ───────────────────────────────────────────────────────────────
-
+-- Toggles tuner open/closed. Server fires this after ACE is validated.
 RegisterNetEvent(resName .. ':openTuner', function()
     if lib.getOpenMenu() == MENU_ID then
         lib.hideMenu()

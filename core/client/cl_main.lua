@@ -1,87 +1,68 @@
---[[
-    cl_main.lua — shared client state, weapon cache, damage modifier.
-    Loaded first. combatState is read directly by cl_recoil and cl_tuner
-    since all client scripts share the same Lua environment in FiveM.
-
-    DAMAGE
-    ────────────────────────────────────────────────────────────────────────────
-    SetWeaponDamageModifier(hash, value) is called once when the player equips
-    a weapon and again whenever the active preset changes. This is the standard
-    approach used by QBCore, ESX, and every major production framework.
-    GTA's engine applies the multiplier to every outgoing bullet automatically.
-    GTA's own headshot advantage remains in effect at all times.
-]]
-
+-- Shared client state. Read directly by cl_recoil and cl_tuner.
 combatState = {
-    preset         = nil, -- active preset table (from config.presets)
-    presetName     = nil, -- active preset key string
-    weaponHash     = nil, -- current weapon hash (number) or nil when unarmed
-    weaponData     = nil, -- resolved weapon data table for current weapon
-    weaponOverride = nil, -- tuner live weapon overrides (nil when not active)
-    presetOverride = nil, -- tuner live preset overrides (nil when not active)
+    preset         = nil,
+    presetName     = nil,
+    weaponHash     = nil,
+    weaponData     = nil,
+    weaponOverride = nil,
+    presetOverride = nil,
 }
 
--- ── Weapon data resolution ────────────────────────────────────────────────────
--- Client-side only — can use GetWeapontypeGroup() for addon weapon fallback.
-
+-- Resolves weapon data with group fallback for addon weapons
 local function resolveWeapon(hash)
     if not hash or hash == false or hash == 0 then return nil end
     if config.weapons[hash] then return config.weapons[hash] end
     local group = GetWeapontypeGroup(hash)
-    if group and config.weaponGroups[group] then
-        return config.weaponGroups[group]
-    end
+    if group and config.weaponGroups[group] then return config.weaponGroups[group] end
     return config.weaponFallback
 end
 
--- ── Damage modifier ───────────────────────────────────────────────────────────
-
+-- Applies SetWeaponDamageModifier using active override or config value
 local function applyDamageModifier(hash)
     if not hash then return end
-    local wd   = combatState.weaponOverride or resolveWeapon(hash)
-    local mult = wd and wd.damage or 1.0
-    SetWeaponDamageModifier(hash, mult)
-
-    local name = wd and wd.name or tostring(hash)
-    _debug('[Combat] DamageModifier  %s → %.2f', name, mult)
+    local wd = combatState.weaponOverride or resolveWeapon(hash)
+    SetWeaponDamageModifier(hash, wd and wd.damage or 1.0)
+    _debug('DamageModifier %s → %.2f', wd and wd.name or tostring(hash), wd and wd.damage or 1.0)
 end
 
--- ── Weapon cache ──────────────────────────────────────────────────────────────
--- lib.onCache('weapon') fires when the held weapon hash changes.
--- Registered exactly once here. cl_recoil detects changes via local comparison.
-
+-- Fires when the held weapon changes — single registration, cl_recoil watches combatState
 lib.onCache('weapon', function(hash)
     local h                    = (hash and hash ~= false and hash ~= 0) and hash or nil
     combatState.weaponHash     = h
     combatState.weaponData     = resolveWeapon(h)
     combatState.weaponOverride = nil
-    if h then applyDamageModifier(h) end
+    if h then
+        applyDamageModifier(h)
+        recoil.start()
+    else
+        recoil.stop()
+    end
 end)
 
--- ── Preset event ──────────────────────────────────────────────────────────────
-
+-- Applies a preset pushed from the server
 RegisterNetEvent(resName .. ':applyPreset', function(name)
     local preset = config.presets[name]
-    if not preset then
-        print(('[Combat] applyPreset: unknown preset "%s"'):format(tostring(name)))
-        return
-    end
+    if not preset then return _warn('applyPreset: unknown preset "%s"', name) end
     combatState.preset         = preset
     combatState.presetName     = name
     combatState.presetOverride = nil
     if combatState.weaponHash then applyDamageModifier(combatState.weaponHash) end
-    _debug('[Combat] Preset → %s (%s)', name, preset.label)
+    _debug('Preset → %s', name)
 end)
 
--- ── Request preset on spawn ───────────────────────────────────────────────────
-
+-- Requests the assigned preset from the server on first spawn via lib.callback
 CreateThread(function()
     while not cache.ped do Wait(100) end
-    TriggerServerEvent(resName .. ':requestPreset')
+    lib.callback(resName .. ':getPreset', false, function(name)
+        local preset = config.presets[name]
+        if not preset then return _warn('getPreset: unknown preset "%s"', name) end
+        combatState.preset     = preset
+        combatState.presetName = name
+        _debug('Preset received → %s', name)
+    end)
 end)
 
--- ── Export used by cl_tuner ───────────────────────────────────────────────────
-
+-- Called by cl_tuner after a live damage value change
 exports('reapplyDamageModifier', function()
     if combatState.weaponHash then applyDamageModifier(combatState.weaponHash) end
 end)

@@ -1,159 +1,112 @@
---[[
-    cl_recoil.lua — per-shot camera kick and recovery.
+-- Recoil system. Started and stopped by cl_main via recoil.start() / recoil.stop().
+-- Loop is completely dormant when no weapon is held.
+recoil = {}
 
-    ── HOW RECOIL WORKS IN FIVEM LUA ────────────────────────────────────────────
-    SetGameplayCamRelativePitch(degrees, 1.0)
-        Pitch relative to the ped's horizontal plane.
-        Subtracting = camera tilts upward.
-    SetGameplayCamRelativeHeading(degrees)
-        Heading relative to ped's facing. Left = negative, right = positive.
+local KICK_SPEED  = 8.0  -- degrees per second the queued kick drains into camera rotation
 
-    ── SMOOTH KICK ───────────────────────────────────────────────────────────────
-    Each shot's kick is queued into pendingKick and drained at KICK_SPEED
-    deg/sec per frame. This produces the gradual punchy feel of the popular
-    server's repeat-loop approach without blocking the thread.
+local active      = false
+local pendingKick = 0.0
+local pitchAccum  = 0.0
+local lastShotAt  = 0
 
-    ── PER-SHOT RANDOM VARIANCE ──────────────────────────────────────────────────
-    Each bullet kicks between 50% and 95% of the base value, biased upward
-    when moving. Mirrors the popular server's random(50, 75+speed)/100 formula.
-    This single change is what makes recoil feel organic instead of mechanical.
-
-    ── RARE HORIZONTAL DRIFT ────────────────────────────────────────────────────
-    Drift fires on ~20% of shots (roll 1 or 3 out of 10).
-    Mirrors the popular server's approach exactly. Most shots go straight up;
-    occasional side-pulls reward trigger discipline over spray-and-pray.
-
-    ── MOVEMENT SPEED VARIANCE ──────────────────────────────────────────────────
-    GetEntitySpeed() adds up to +25% kick at a full sprint.
-
-    ── WEAPON SWITCH DETECTION ──────────────────────────────────────────────────
-    combatState.weaponHash is compared against a local copy each frame.
-    This avoids a second lib.onCache('weapon') registration which would
-    silently conflict with the one in cl_main.lua.
-
-    ── FIRE RATE THROTTLE ────────────────────────────────────────────────────────
-    One kick per bullet interval (60000 / RPM ms), minimum 50ms.
-    Prevents one kick per frame on fully-automatic weapons.
-]]
-
--- Speed at which the queued kick drains into actual camera rotation (deg/sec).
--- 8 deg/sec means a 1.2° kick completes in ~7 frames at 60fps — matches
--- the feel of the popular server's 0.1/frame step loop.
-local KICK_SPEED  = 8.0
-
-local pendingKick = 0.0 -- queued degrees not yet applied to camera
-local pitchAccum  = 0.0 -- degrees applied, waiting to recover
-local lastShotAt  = 0   -- GetGameTimer() of last gated shot
-local lastWeapon  = nil -- local weapon copy for change detection
-
--- ── View mode ─────────────────────────────────────────────────────────────────
-
+-- Returns current view mode based on vehicle and camera state
 local function viewMode()
     if cache.vehicle and cache.vehicle ~= false then return 'driveby' end
     if GetFollowPedCamViewMode() == 4 then return 'fpp' end
     return 'tpp'
 end
 
--- ── Main loop ─────────────────────────────────────────────────────────────────
+-- Calculates and applies one shot's camera kick, drift, and shake
+local function applyShot(wd, preset)
+    local mode     = viewMode()
+    local r        = wd.recoil[mode]
+    local mult     = preset.recoilMult
+    local speed    = GetEntitySpeed(cache.ped)
+    local speedMod = math.min(1.25, 1.0 + speed * 0.02)
+    local shotRand = math.random(50, math.min(95, 75 + math.floor(speed * 1.5))) / 100.0
+    local upAmt    = r.up   * mult * speedMod * shotRand
+    local side     = r.side * mult * speedMod * shotRand
+    local cap      = preset.maxAccumulation
 
-CreateThread(function()
-    while true do
-        Wait(0)
-
-        -- Weapon change: reset kick and accumulation.
-        if combatState.weaponHash ~= lastWeapon then
-            lastWeapon  = combatState.weaponHash
-            pendingKick = 0.0
-            pitchAccum  = 0.0
-        end
-
-        local preset = combatState.presetOverride or combatState.preset
-        local wd     = combatState.weaponOverride or combatState.weaponData
-
-        if not preset or not wd then goto continue end
-
-        local dt       = GetFrameTime()
-        local now      = GetGameTimer()
-        local shooting = IsPedShooting(cache.ped)
-
-        -- 1. Drain pending kick smoothly this frame.
-        if pendingKick > 0.001 then
-            local step = math.min(KICK_SPEED * dt, pendingKick)
-            SetGameplayCamRelativePitch(GetGameplayCamRelativePitch() - step, 1.0)
-            pitchAccum  = pitchAccum + step
-            pendingKick = pendingKick - step
-        end
-
-        -- 2. New shot.
-        if shooting then
-            local interval = math.max(50, math.floor(60000 / (wd.fireRate or 400)))
-
-            if now - lastShotAt >= interval then
-                local mode     = viewMode()
-                local r        = wd.recoil[mode]
-                local mult     = preset.recoilMult
-
-                -- Movement speed variance: +2% per m/s, capped at +25%.
-                local speed    = GetEntitySpeed(cache.ped)
-                local speedMod = math.min(1.25, 1.0 + speed * 0.02)
-
-                -- Per-shot random variance: 50–95% of base, wider at speed.
-                local hiRange  = math.min(95, 75 + math.floor(speed * 1.5))
-                local shotRand = math.random(50, hiRange) / 100.0
-
-                local upAmt    = r.up * mult * speedMod * shotRand
-                local side     = r.side * mult * speedMod * shotRand
-
-                -- Vertical cap.
-                local cap      = preset.maxAccumulation
-                if cap > 0 then
-                    local total = pitchAccum + pendingKick
-                    if total >= cap then
-                        upAmt = 0.0
-                    else
-                        upAmt = math.min(upAmt, cap - total)
-                    end
-                end
-
-                pendingKick = pendingKick + upAmt
-
-                -- Horizontal drift on ~20% of shots (rolls 1 or 3 out of 10).
-                if side > 0.001 and (math.random(1, 10) <= 2) then
-                    local drift = (math.random() * 2.0 - 1.0) * side
-                    SetGameplayCamRelativeHeading(
-                        math.max(-179.0, math.min(179.0,
-                            GetGameplayCamRelativeHeading() + drift)))
-                end
-
-                -- Camera shake: tactile feel only, no rotation.
-                local shakeAmt = (wd.shake or 0.0) * math.max(0.2, mult)
-                if shakeAmt > 0.001 then
-                    ShakeGameplayCam('HAND_SHAKE', shakeAmt)
-                end
-
-                lastShotAt = now
-
-                _debug('[Recoil] %s | %s | up=%.2f side=%.2f spd=%.1f rnd=%.2f accum=%.2f', wd.name, mode, upAmt, side,
-                speed, shotRand,
-                    pitchAccum + pendingKick)
-            end
-
-            -- 3. Recovery — frame-rate independent via GetFrameTime().
-        elseif pitchAccum > 0.001 and pendingKick < 0.001 then
-            if (now - lastShotAt) >= (preset.recoveryDelay or 0) then
-                local decay = math.min((preset.recoveryRate or 55.0) * dt, pitchAccum)
-                SetGameplayCamRelativePitch(GetGameplayCamRelativePitch() + decay, 1.0)
-                pitchAccum = pitchAccum - decay
-                if pitchAccum < 0.001 then pitchAccum = 0.0 end
-            end
-        end
-
-        ::continue::
+    if cap > 0 then
+        local total = pitchAccum + pendingKick
+        upAmt = total >= cap and 0.0 or math.min(upAmt, cap - total)
     end
-end)
 
--- ── Debug overlay ─────────────────────────────────────────────────────────────
+    pendingKick = pendingKick + upAmt
 
+    -- Horizontal drift fires on ~20% of shots — mirrors the popular server pattern
+    if side > 0.001 and math.random(10) <= 2 then
+        SetGameplayCamRelativeHeading(
+            math.max(-179.0, math.min(179.0, GetGameplayCamRelativeHeading() + (math.random() * 2.0 - 1.0) * side)))
+    end
+
+    local shakeAmt = (wd.shake or 0.0) * math.max(0.2, mult)
+    if shakeAmt > 0.001 then ShakeGameplayCam('HAND_SHAKE', shakeAmt) end
+
+    _debug('Shot %s | %s | up=%.2f spd=%.1f rnd=%.2f accum=%.2f',
+        wd.name, mode, upAmt, speed, shotRand, pitchAccum + pendingKick)
+end
+
+-- Starts the recoil loop. No-op if already running.
+function recoil.start()
+    if active then return end
+    active      = true
+    pendingKick = 0.0
+    pitchAccum  = 0.0
+    lastShotAt  = 0
+
+    CreateThread(function()
+        while active do
+            local wd     = combatState.weaponOverride or combatState.weaponData
+            local preset = combatState.presetOverride or combatState.preset
+
+            if not wd or not preset then
+                Wait(100)
+            elseif pendingKick > 0.001 then
+                -- Drain queued kick smoothly into camera rotation
+                local dt   = GetFrameTime()
+                local step = math.min(KICK_SPEED * dt, pendingKick)
+                SetGameplayCamRelativePitch(GetGameplayCamRelativePitch() - step, 1.0)
+                pitchAccum  = pitchAccum + step
+                pendingKick = pendingKick - step
+                Wait(0)
+            elseif IsPedShooting(cache.ped) then
+                -- Gate kicks to one per bullet interval based on fire rate
+                local now      = GetGameTimer()
+                local interval = math.max(50, math.floor(60000 / (wd.fireRate or 400)))
+                if now - lastShotAt >= interval then
+                    applyShot(wd, preset)
+                    lastShotAt = now
+                end
+                Wait(0)
+            elseif pitchAccum > 0.001 then
+                -- Recover camera smoothly after firing stops
+                local now = GetGameTimer()
+                if (now - lastShotAt) >= (preset.recoveryDelay or 0) then
+                    local dt    = GetFrameTime()
+                    local decay = math.min((preset.recoveryRate or 55.0) * dt, pitchAccum)
+                    SetGameplayCamRelativePitch(GetGameplayCamRelativePitch() + decay, 1.0)
+                    pitchAccum  = pitchAccum - decay
+                    if pitchAccum < 0.001 then pitchAccum = 0.0 end
+                end
+                Wait(0)
+            else
+                -- Weapon held but idle — check infrequently
+                Wait(50)
+            end
+        end
+    end)
+end
+
+-- Stops the recoil loop and resets state
+function recoil.stop()
+    active      = false
+    pendingKick = 0.0
+    pitchAccum  = 0.0
+end
+
+-- Debug overlay — permanent only in debug mode, never runs in production
 if config.debug.code then
     CreateThread(function()
         while true do
@@ -161,21 +114,18 @@ if config.debug.code then
             local p = combatState.presetOverride or combatState.preset
             if p and p.maxAccumulation > 0 and (pitchAccum + pendingKick) > 0.001 then
                 local total = pitchAccum + pendingKick
-                local pct   = math.min(100, total / p.maxAccumulation * 100)
                 SetTextFont(4)
                 SetTextScale(0.28, 0.28)
                 SetTextColour(255, 200, 50, 210)
                 SetTextOutline()
                 SetTextEntry('STRING')
                 AddTextComponentString(('Recoil %.0f%%  (%.2f° / %.1f°)'):format(
-                    pct, total, p.maxAccumulation))
+                    math.min(100, total / p.maxAccumulation * 100), total, p.maxAccumulation))
                 DrawText(0.01, 0.95)
             end
         end
     end)
 end
-
--- ── Export ────────────────────────────────────────────────────────────────────
 
 exports('getRecoilAccum', function()
     return pitchAccum + pendingKick

@@ -1,45 +1,15 @@
---[[
-    sv_main.lua — preset management, admin commands, and exports.
+-- Preset management, admin commands, and exports.
+local playerPresets = {}
 
-    ── SINGLE MODE (config.mode = 'single') ─────────────────────────────────────
-    Every player receives config.defaultPreset on join.
-    Change server-wide live:
-        /setglobalpreset <presetName>
-        exports['better_combat']:setGlobalPreset('pvp_competitive')
-
-    ── MULTI MODE (config.mode = 'multi') ───────────────────────────────────────
-    Players receive config.defaultPreset on join.
-    Your gamemode / zone script assigns per-player presets:
-        exports['better_combat']:setPlayerPreset(source, 'pvp_competitive')
-    Revert when the player leaves a zone:
-        exports['better_combat']:setPlayerPreset(source, config.defaultPreset)
-
-    ── ADMIN COMMANDS ────────────────────────────────────────────────────────────
-    /tuner                           — open live tuner on caller's screen
-    /setpreset <id> <preset>         — assign preset to one player
-    /setglobalpreset <preset>        — assign preset to all players
-    /listpresets                     — print all preset names to caller's F8
-
-    ── SERVER EXPORTS ────────────────────────────────────────────────────────────
-    setPlayerPreset(source, name)    → boolean
-    setGlobalPreset(name)            → boolean
-    getPlayerPreset(source)          → string
-]]
-
-local playerPresets = {} -- [source] = preset name string
-
--- ox_lib does not expose lib.notify server-side.
--- The correct documented approach is TriggerClientEvent('ox_lib:notify', ...).
+-- Sends an ox_lib notification to a client (or -1 for all)
 local function notify(source, data)
     TriggerClientEvent('ox_lib:notify', source, data)
 end
 
--- ── Core preset assign ────────────────────────────────────────────────────────
-
+-- Assigns a preset to a player and pushes it to their client
 local function assignPreset(source, name)
     if not config.presets[name] then
-        print(('[Combat] assignPreset: unknown preset "%s" for player %d'):format(
-            tostring(name), source))
+        _warn('assignPreset: unknown preset "%s" for player %d', name, source)
         return false
     end
     playerPresets[source] = name
@@ -47,27 +17,24 @@ local function assignPreset(source, name)
     return true
 end
 
--- ── Player join / drop ────────────────────────────────────────────────────────
-
-RegisterNetEvent(resName .. ':requestPreset', function()
-    local src = source
-    assignPreset(src, playerPresets[src] or config.defaultPreset)
+-- Returns the preset assigned to a player, used by lib.callback
+lib.callback.register(resName .. ':getPreset', function(source)
+    return playerPresets[source] or config.defaultPreset
 end)
 
 AddEventHandler('playerDropped', function()
     playerPresets[source] = nil
 end)
 
--- ── Admin commands ────────────────────────────────────────────────────────────
-
+-- Opens the live tuner on the requesting admin's screen
 lib.addCommand(config.tuner.command, {
     help       = 'Open the live weapon tuner',
     restricted = config.tuner.permission,
 }, function(src)
     TriggerClientEvent(resName .. ':openTuner', src)
-    print(('[Tuner] Opened by %s (id %d)'):format(GetPlayerName(src), src))
 end)
 
+-- Assigns a named preset to a specific player by server ID
 lib.addCommand('setpreset', {
     help       = 'Assign a recoil preset to a player',
     restricted = config.tuner.permission,
@@ -87,6 +54,7 @@ lib.addCommand('setpreset', {
     })
 end)
 
+-- Switches all connected players to a preset and updates the server default
 lib.addCommand('setglobalpreset', {
     help       = 'Switch all players to a preset',
     restricted = config.tuner.permission,
@@ -115,10 +83,10 @@ lib.addCommand('setglobalpreset', {
         description = ('Server preset → %s'):format(config.presets[args.preset].label),
         duration = 4000
     })
-    print(('[Combat] Global preset → "%s" (%d players, by %d)'):format(
-        args.preset, count, src))
+    _info('Global preset → "%s" (%d players, by %d)', args.preset, count, src)
 end)
 
+-- Prints all available preset names to the requesting admin's F8 console
 lib.addCommand('listpresets', {
     help       = 'List all preset names',
     restricted = config.tuner.permission,
@@ -136,13 +104,7 @@ lib.addCommand('listpresets', {
     })
 end)
 
--- ── Client helper ─────────────────────────────────────────────────────────────
-
-RegisterNetEvent(resName .. ':printConsole', function(text)
-    print(text)
-end)
-
--- ── Exports ───────────────────────────────────────────────────────────────────
+RegisterNetEvent(resName .. ':printConsole', function(text) print(text) end)
 
 exports('setPlayerPreset', assignPreset)
 
@@ -157,24 +119,21 @@ exports('getPlayerPreset', function(src)
     return playerPresets[src] or config.defaultPreset
 end)
 
--- ── Startup validation ────────────────────────────────────────────────────────
-
+-- Startup validation
 CreateThread(function()
-    local ok = true
-    if not config.presets[config.defaultPreset] then
-        print(('[Combat] ERROR: defaultPreset "%s" not found in config/presets.lua'):format(
-            config.defaultPreset))
-        ok = false
+    local ok = config.presets[config.defaultPreset] ~= nil
+        and (config.mode == 'single' or config.mode == 'multi')
+
+    if not ok then
+        if not config.presets[config.defaultPreset] then
+            _error('defaultPreset "%s" not found in config/presets.lua', config.defaultPreset)
+        end
+        if config.mode ~= 'single' and config.mode ~= 'multi' then
+            _error('config.mode must be "single" or "multi", got "%s"', tostring(config.mode))
+        end
+        return
     end
-    if config.mode ~= 'single' and config.mode ~= 'multi' then
-        print(('[Combat] ERROR: config.mode must be "single" or "multi", got "%s"'):format(
-            tostring(config.mode)))
-        ok = false
-    end
-    if ok then
-        print(('[Combat] Ready  |  mode: %s  |  default: %s (%s)'):format(
-            config.mode,
-            config.defaultPreset,
-            config.presets[config.defaultPreset].label))
-    end
+
+    _info('Ready  |  mode: %s  |  default: %s (%s)',
+        config.mode, config.defaultPreset, config.presets[config.defaultPreset].label)
 end)

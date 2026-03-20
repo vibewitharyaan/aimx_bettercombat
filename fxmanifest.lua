@@ -2,8 +2,8 @@ fx_version "cerulean"
 game "gta5"
 lua54 "yes"
 
-name "aimx_bettercombat"
-description "Advanced Weapon Combat & Anti-Cheat System"
+name "better_combat"
+description "Weapon recoil and damage system"
 version "1.0.0"
 author "3RROR#0278"
 store "https://errorhub.tebex.io/"
@@ -13,36 +13,24 @@ website "https://elapsedstudios.com/"
 shared_scripts {
     "@ox_lib/init.lua",
     "config/config.lua",
+    "config/weapons.lua",
     "config/presets.lua",
-    "config/bonemap.lua",
-    "core/shared/sh_utils.lua",
-    "core/shared/sh_bonemap.lua",
-    "core/shared/sh_presets.lua"
 }
 
 client_scripts {
-    "core/client/interface/nui.lua",
+    "core/client/cl_main.lua",
     "core/client/cl_recoil.lua",
-    "core/client/cl_tuner_ui.lua",
-    "core/client/cl_main.lua"
+    "core/client/cl_tuner.lua",
 }
 
 server_scripts {
-    "core/server/sv_preset_manager.lua",
-    "core/server/sv_damage_validator.lua",
-    "core/server/sv_tuner_commands.lua",
-    "core/server/sv_main.lua"
-}
-
-files {
-    "locales/en.json"
+    "core/server/sv_main.lua",
 }
 
 dependencies { "ox_lib" }
 
 escrow_ignore {
-    "config/**/*.lua",
-    "core/shared/**/*.lua",
-    "core/client/**/*.lua",
-    "core/server/**/*.lua"
+    "config/*.lua",
+    "core/client/*.lua",
+    "core/server/*.lua"
 }
