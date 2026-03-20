@@ -27,7 +27,7 @@
     GetEntitySpeed() adds up to +25% kick at a full sprint.
 
     ── WEAPON SWITCH DETECTION ──────────────────────────────────────────────────
-    CombatState.weaponHash is compared against a local copy each frame.
+    combatState.weaponHash is compared against a local copy each frame.
     This avoids a second lib.onCache('weapon') registration which would
     silently conflict with the one in cl_main.lua.
 
@@ -61,14 +61,14 @@ CreateThread(function()
         Wait(0)
 
         -- Weapon change: reset kick and accumulation.
-        if CombatState.weaponHash ~= lastWeapon then
-            lastWeapon  = CombatState.weaponHash
+        if combatState.weaponHash ~= lastWeapon then
+            lastWeapon  = combatState.weaponHash
             pendingKick = 0.0
             pitchAccum  = 0.0
         end
 
-        local preset = CombatState.presetOverride or CombatState.preset
-        local wd     = CombatState.weaponOverride or CombatState.weaponData
+        local preset = combatState.presetOverride or combatState.preset
+        local wd     = combatState.weaponOverride or combatState.weaponData
 
         if not preset or not wd then goto continue end
 
@@ -133,7 +133,8 @@ CreateThread(function()
 
                 lastShotAt = now
 
-                _debug('[Recoil] %s | %s | up=%.2f side=%.2f spd=%.1f rnd=%.2f accum=%.2f', wd.name, mode, upAmt, side, speed, shotRand,
+                _debug('[Recoil] %s | %s | up=%.2f side=%.2f spd=%.1f rnd=%.2f accum=%.2f', wd.name, mode, upAmt, side,
+                speed, shotRand,
                     pitchAccum + pendingKick)
             end
 
@@ -157,7 +158,7 @@ if config.debug.code then
     CreateThread(function()
         while true do
             Wait(0)
-            local p = CombatState.presetOverride or CombatState.preset
+            local p = combatState.presetOverride or combatState.preset
             if p and p.maxAccumulation > 0 and (pitchAccum + pendingKick) > 0.001 then
                 local total = pitchAccum + pendingKick
                 local pct   = math.min(100, total / p.maxAccumulation * 100)

@@ -1,6 +1,6 @@
 --[[
     cl_main.lua — shared client state, weapon cache, damage modifier.
-    Loaded first. CombatState is read directly by cl_recoil and cl_tuner
+    Loaded first. combatState is read directly by cl_recoil and cl_tuner
     since all client scripts share the same Lua environment in FiveM.
 
     DAMAGE
@@ -12,7 +12,7 @@
     GTA's own headshot advantage remains in effect at all times.
 ]]
 
-CombatState = {
+combatState = {
     preset         = nil, -- active preset table (from config.presets)
     presetName     = nil, -- active preset key string
     weaponHash     = nil, -- current weapon hash (number) or nil when unarmed
@@ -38,7 +38,7 @@ end
 
 local function applyDamageModifier(hash)
     if not hash then return end
-    local wd   = CombatState.weaponOverride or resolveWeapon(hash)
+    local wd   = combatState.weaponOverride or resolveWeapon(hash)
     local mult = wd and wd.damage or 1.0
     SetWeaponDamageModifier(hash, mult)
 
@@ -52,9 +52,9 @@ end
 
 lib.onCache('weapon', function(hash)
     local h                    = (hash and hash ~= false and hash ~= 0) and hash or nil
-    CombatState.weaponHash     = h
-    CombatState.weaponData     = resolveWeapon(h)
-    CombatState.weaponOverride = nil
+    combatState.weaponHash     = h
+    combatState.weaponData     = resolveWeapon(h)
+    combatState.weaponOverride = nil
     if h then applyDamageModifier(h) end
 end)
 
@@ -66,11 +66,11 @@ RegisterNetEvent(resName .. ':applyPreset', function(name)
         print(('[Combat] applyPreset: unknown preset "%s"'):format(tostring(name)))
         return
     end
-    CombatState.preset         = preset
-    CombatState.presetName     = name
-    CombatState.presetOverride = nil
-    if CombatState.weaponHash then applyDamageModifier(CombatState.weaponHash) end
-    _debug('[Combat] Preset → %s (%s)', name, preset.label) 
+    combatState.preset         = preset
+    combatState.presetName     = name
+    combatState.presetOverride = nil
+    if combatState.weaponHash then applyDamageModifier(combatState.weaponHash) end
+    _debug('[Combat] Preset → %s (%s)', name, preset.label)
 end)
 
 -- ── Request preset on spawn ───────────────────────────────────────────────────
@@ -83,5 +83,5 @@ end)
 -- ── Export used by cl_tuner ───────────────────────────────────────────────────
 
 exports('reapplyDamageModifier', function()
-    if CombatState.weaponHash then applyDamageModifier(CombatState.weaponHash) end
+    if combatState.weaponHash then applyDamageModifier(combatState.weaponHash) end
 end)

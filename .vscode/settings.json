@@ -28,6 +28,7 @@
     "pname",
     "discordCfg",
     "MySQL",
-    "_warn"
+    "_warn",
+    "combatState"
   ]
 }
