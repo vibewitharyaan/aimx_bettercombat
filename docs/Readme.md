@@ -45,28 +45,30 @@ A clean weapon recoil and damage system for FiveM. Works on both RP and PvP serv
 This is the only file most server owners need to touch.
 
 ```lua
-Config.mode          = 'single'   -- see below
-Config.defaultPreset = 'default'  -- which preset everyone starts with
+config.mode          = 'single'   -- see below
+config.defaultPreset = 'default'  -- which preset everyone starts with
 ```
 
 **Mode options:**
 
-| Mode | Use it when |
-|---|---|
-| `'single'` | Everyone on the server uses the same recoil preset. Good for RP servers. |
-| `'multi'` | Different players or zones can have different presets. Good for PvP servers. |
+| Mode       | Use it when                                                                  |
+| ---------- | ---------------------------------------------------------------------------- |
+| `'single'` | Everyone on the server uses the same recoil preset. Good for RP servers.     |
+| `'multi'`  | Different players or zones can have different presets. Good for PvP servers. |
 
 **Tuner settings:**
+
 ```lua
-Config.tuner = {
+config.tuner = {
     command    = 'tuner',        -- the chat command to open the tuner menu
     permission = 'group.admin',  -- who is allowed to use it
 }
 ```
 
 **Debug mode:**
+
 ```lua
-Config.debug = false  -- set to true to see recoil values in F8 while testing
+config.debug = false  -- set to true to see recoil values in F8 while testing
 ```
 
 ---
@@ -93,11 +95,11 @@ Each weapon has its own entry. Here is what each field means:
 
 **Damage values explained:**
 
-| Value | What it means |
-|---|---|
-| `1.0` | Default GTA damage — unchanged |
-| `0.7` | 30% less damage — fights last longer (good for RP) |
-| `1.4` | 40% more damage — faster kills (good for PvP) |
+| Value  | What it means                                                                                             |
+| ------ | --------------------------------------------------------------------------------------------------------- |
+| `1.0`  | Default GTA damage — unchanged                                                                            |
+| `0.7`  | 30% less damage — fights last longer (good for RP)                                                        |
+| `1.4`  | 40% more damage — faster kills (good for PvP)                                                             |
 | `0.25` | Low damage — roughly 4 body shots to down, 2 headshots (GTA applies its own headshot bonus automatically) |
 
 **Recoil values explained:**
@@ -126,7 +128,7 @@ Copy any existing entry, paste it below, and change the weapon name and values:
 },
 ```
 
-> **Addon / custom weapons** — if a weapon isn't listed here, the script automatically falls back to its weapon group (pistol group, rifle group, etc.) using the values in `Config.weaponGroups` at the bottom of the file. You don't need to do anything for this to work.
+> **Addon / custom weapons** — if a weapon isn't listed here, the script automatically falls back to its weapon group (pistol group, rifle group, etc.) using the values in `config.weaponGroups` at the bottom of the file. You don't need to do anything for this to work.
 
 ---
 
@@ -146,12 +148,12 @@ default = {
 
 **Quick reference:**
 
-| Field | Lower value | Higher value |
-|---|---|---|
-| `recoilMult` | Less kick | More kick |
-| `recoveryRate` | Camera returns slowly | Camera snaps back fast |
-| `recoveryDelay` | Recovery starts immediately | Camera holds before returning |
-| `maxAccumulation` | Spray is more controlled | Spray walks further up |
+| Field             | Lower value                 | Higher value                  |
+| ----------------- | --------------------------- | ----------------------------- |
+| `recoilMult`      | Less kick                   | More kick                     |
+| `recoveryRate`    | Camera returns slowly       | Camera snaps back fast        |
+| `recoveryDelay`   | Recovery starts immediately | Camera holds before returning |
+| `maxAccumulation` | Spray is more controlled    | Spray walks further up        |
 
 **How to add a new preset:**
 
@@ -171,16 +173,17 @@ Then set it as default or assign it to players using the commands below.
 
 ## Admin commands
 
-All commands require the permission set in `Config.tuner.permission` (default: `group.admin`).
+All commands require the permission set in `config.tuner.permission` (default: `group.admin`).
 
-| Command | What it does |
-|---|---|
-| `/tuner` | Opens the live tuner menu for your weapon |
-| `/setglobalpreset <name>` | Switches every player on the server to a preset instantly |
-| `/setpreset <playerid> <name>` | Assigns a preset to one specific player |
-| `/listpresets` | Prints all available preset names to your F8 console |
+| Command                        | What it does                                              |
+| ------------------------------ | --------------------------------------------------------- |
+| `/tuner`                       | Opens the live tuner menu for your weapon                 |
+| `/setglobalpreset <name>`      | Switches every player on the server to a preset instantly |
+| `/setpreset <playerid> <name>` | Assigns a preset to one specific player                   |
+| `/listpresets`                 | Prints all available preset names to your F8 console      |
 
 **Example:**
+
 ```
 /setglobalpreset pvp_competitive
 /setpreset 5 rp_mild
@@ -221,16 +224,16 @@ local name = exports['better_combat']:getPlayerPreset(source)
 
 ## Included presets
 
-| Preset name | Description |
-|---|---|
-| `default` | Balanced starting point |
-| `rp_mild` | Easy recoil, forgiving, long fights |
-| `rp_standard` | Moderate recoil for RP |
-| `rp_realistic` | Punishing recoil, requires discipline |
+| Preset name       | Description                                 |
+| ----------------- | ------------------------------------------- |
+| `default`         | Balanced starting point                     |
+| `rp_mild`         | Easy recoil, forgiving, long fights         |
+| `rp_standard`     | Moderate recoil for RP                      |
+| `rp_realistic`    | Punishing recoil, requires discipline       |
 | `pvp_competitive` | Low recoil, fast recovery, competitive feel |
-| `pvp_standard` | Balanced PvP recoil |
-| `pvp_hardcore` | High recoil, slow recovery, skill-based |
-| `pvp_no_recoil` | Zero recoil, useful for aim training ranges |
+| `pvp_standard`    | Balanced PvP recoil                         |
+| `pvp_hardcore`    | High recoil, slow recovery, skill-based     |
+| `pvp_no_recoil`   | Zero recoil, useful for aim training ranges |
 
 ---
 

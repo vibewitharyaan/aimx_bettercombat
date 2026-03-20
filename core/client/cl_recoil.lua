@@ -133,11 +133,8 @@ CreateThread(function()
 
                 lastShotAt = now
 
-                if configdebug then
-                    print(('[Recoil] %s | %s | up=%.2f side=%.2f spd=%.1f rnd=%.2f accum=%.2f'):format(
-                        wd.name, mode, upAmt, side, speed, shotRand,
-                        pitchAccum + pendingKick))
-                end
+                _debug('[Recoil] %s | %s | up=%.2f side=%.2f spd=%.1f rnd=%.2f accum=%.2f', wd.name, mode, upAmt, side, speed, shotRand,
+                    pitchAccum + pendingKick)
             end
 
             -- 3. Recovery — frame-rate independent via GetFrameTime().
@@ -156,7 +153,7 @@ end)
 
 -- ── Debug overlay ─────────────────────────────────────────────────────────────
 
-if configdebug then
+if config.debug.code then
     CreateThread(function()
         while true do
             Wait(0)

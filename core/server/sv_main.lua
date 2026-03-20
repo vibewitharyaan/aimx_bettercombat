@@ -1,18 +1,18 @@
 --[[
     sv_main.lua — preset management, admin commands, and exports.
 
-    ── SINGLE MODE (configmode = 'single') ─────────────────────────────────────
-    Every player receives configdefaultPreset on join.
+    ── SINGLE MODE (config.mode = 'single') ─────────────────────────────────────
+    Every player receives config.defaultPreset on join.
     Change server-wide live:
         /setglobalpreset <presetName>
         exports['better_combat']:setGlobalPreset('pvp_competitive')
 
-    ── MULTI MODE (configmode = 'multi') ───────────────────────────────────────
-    Players receive configdefaultPreset on join.
+    ── MULTI MODE (config.mode = 'multi') ───────────────────────────────────────
+    Players receive config.defaultPreset on join.
     Your gamemode / zone script assigns per-player presets:
         exports['better_combat']:setPlayerPreset(source, 'pvp_competitive')
     Revert when the player leaves a zone:
-        exports['better_combat']:setPlayerPreset(source, configdefaultPreset)
+        exports['better_combat']:setPlayerPreset(source, config.defaultPreset)
 
     ── ADMIN COMMANDS ────────────────────────────────────────────────────────────
     /tuner                           — open live tuner on caller's screen
@@ -37,7 +37,7 @@ end
 -- ── Core preset assign ────────────────────────────────────────────────────────
 
 local function assignPreset(source, name)
-    if not configpresets[name] then
+    if not config.presets[name] then
         print(('[Combat] assignPreset: unknown preset "%s" for player %d'):format(
             tostring(name), source))
         return false
@@ -51,7 +51,7 @@ end
 
 RegisterNetEvent(resName .. ':requestPreset', function()
     local src = source
-    assignPreset(src, playerPresets[src] or configdefaultPreset)
+    assignPreset(src, playerPresets[src] or config.defaultPreset)
 end)
 
 AddEventHandler('playerDropped', function()
@@ -60,9 +60,9 @@ end)
 
 -- ── Admin commands ────────────────────────────────────────────────────────────
 
-lib.addCommand(configtuner.command, {
+lib.addCommand(config.tuner.command, {
     help       = 'Open the live weapon tuner',
-    restricted = configtuner.permission,
+    restricted = config.tuner.permission,
 }, function(src)
     TriggerClientEvent(resName .. ':openTuner', src)
     print(('[Tuner] Opened by %s (id %d)'):format(GetPlayerName(src), src))
@@ -70,7 +70,7 @@ end)
 
 lib.addCommand('setpreset', {
     help       = 'Assign a recoil preset to a player',
-    restricted = configtuner.permission,
+    restricted = config.tuner.permission,
     params     = {
         { name = 'target', type = 'playerId', help = 'Target player server ID' },
         { name = 'preset', type = 'string',   help = 'Preset name' },
@@ -89,12 +89,12 @@ end)
 
 lib.addCommand('setglobalpreset', {
     help       = 'Switch all players to a preset',
-    restricted = configtuner.permission,
+    restricted = config.tuner.permission,
     params     = {
         { name = 'preset', type = 'string', help = 'Preset name' },
     },
 }, function(src, args)
-    if not configpresets[args.preset] then
+    if not config.presets[args.preset] then
         notify(src, {
             type = 'error',
             title = 'Combat',
@@ -103,7 +103,7 @@ lib.addCommand('setglobalpreset', {
         })
         return
     end
-    configdefaultPreset = args.preset
+    config.defaultPreset = args.preset
     local count = 0
     for _, id in ipairs(GetPlayers()) do
         assignPreset(tonumber(id), args.preset)
@@ -112,7 +112,7 @@ lib.addCommand('setglobalpreset', {
     notify(-1, {
         type = 'inform',
         title = 'Combat',
-        description = ('Server preset → %s'):format(configpresets[args.preset].label),
+        description = ('Server preset → %s'):format(config.presets[args.preset].label),
         duration = 4000
     })
     print(('[Combat] Global preset → "%s" (%d players, by %d)'):format(
@@ -121,10 +121,10 @@ end)
 
 lib.addCommand('listpresets', {
     help       = 'List all preset names',
-    restricted = configtuner.permission,
+    restricted = config.tuner.permission,
 }, function(src)
     local lines = { 'Available presets:' }
-    for name, p in pairs(configpresets) do
+    for name, p in pairs(config.presets) do
         lines[#lines + 1] = ('  %-22s %s'):format(name, p.label)
     end
     TriggerClientEvent(resName .. ':printConsole', src, table.concat(lines, '\n'))
@@ -147,34 +147,34 @@ end)
 exports('setPlayerPreset', assignPreset)
 
 exports('setGlobalPreset', function(name)
-    if not configpresets[name] then return false end
-    configdefaultPreset = name
+    if not config.presets[name] then return false end
+    config.defaultPreset = name
     for _, id in ipairs(GetPlayers()) do assignPreset(tonumber(id), name) end
     return true
 end)
 
 exports('getPlayerPreset', function(src)
-    return playerPresets[src] or configdefaultPreset
+    return playerPresets[src] or config.defaultPreset
 end)
 
 -- ── Startup validation ────────────────────────────────────────────────────────
 
 CreateThread(function()
     local ok = true
-    if not configpresets[configdefaultPreset] then
+    if not config.presets[config.defaultPreset] then
         print(('[Combat] ERROR: defaultPreset "%s" not found in config/presets.lua'):format(
-            configdefaultPreset))
+            config.defaultPreset))
         ok = false
     end
-    if configmode ~= 'single' and configmode ~= 'multi' then
-        print(('[Combat] ERROR: configmode must be "single" or "multi", got "%s"'):format(
-            tostring(configmode)))
+    if config.mode ~= 'single' and config.mode ~= 'multi' then
+        print(('[Combat] ERROR: config.mode must be "single" or "multi", got "%s"'):format(
+            tostring(config.mode)))
         ok = false
     end
     if ok then
         print(('[Combat] Ready  |  mode: %s  |  default: %s (%s)'):format(
-            configmode,
-            configdefaultPreset,
-            configpresets[configdefaultPreset].label))
+            config.mode,
+            config.defaultPreset,
+            config.presets[config.defaultPreset].label))
     end
 end)

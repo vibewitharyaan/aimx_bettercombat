@@ -13,7 +13,7 @@
 ]]
 
 CombatState = {
-    preset         = nil, -- active preset table (from configpresets)
+    preset         = nil, -- active preset table (from config.presets)
     presetName     = nil, -- active preset key string
     weaponHash     = nil, -- current weapon hash (number) or nil when unarmed
     weaponData     = nil, -- resolved weapon data table for current weapon
@@ -26,12 +26,12 @@ CombatState = {
 
 local function resolveWeapon(hash)
     if not hash or hash == false or hash == 0 then return nil end
-    if configweapons[hash] then return configweapons[hash] end
+    if config.weapons[hash] then return config.weapons[hash] end
     local group = GetWeapontypeGroup(hash)
-    if group and configweaponGroups[group] then
-        return configweaponGroups[group]
+    if group and config.weaponGroups[group] then
+        return config.weaponGroups[group]
     end
-    return configweaponFallback
+    return config.weaponFallback
 end
 
 -- ── Damage modifier ───────────────────────────────────────────────────────────
@@ -41,10 +41,9 @@ local function applyDamageModifier(hash)
     local wd   = CombatState.weaponOverride or resolveWeapon(hash)
     local mult = wd and wd.damage or 1.0
     SetWeaponDamageModifier(hash, mult)
-    if configdebug then
-        local name = wd and wd.name or tostring(hash)
-        print(('[Combat] DamageModifier  %s → %.2f'):format(name, mult))
-    end
+
+    local name = wd and wd.name or tostring(hash)
+    _debug('[Combat] DamageModifier  %s → %.2f', name, mult)
 end
 
 -- ── Weapon cache ──────────────────────────────────────────────────────────────
@@ -62,7 +61,7 @@ end)
 -- ── Preset event ──────────────────────────────────────────────────────────────
 
 RegisterNetEvent(resName .. ':applyPreset', function(name)
-    local preset = configpresets[name]
+    local preset = config.presets[name]
     if not preset then
         print(('[Combat] applyPreset: unknown preset "%s"'):format(tostring(name)))
         return
@@ -71,9 +70,7 @@ RegisterNetEvent(resName .. ':applyPreset', function(name)
     CombatState.presetName     = name
     CombatState.presetOverride = nil
     if CombatState.weaponHash then applyDamageModifier(CombatState.weaponHash) end
-    if configdebug then
-        print(('[Combat] Preset → %s (%s)'):format(name, preset.label))
-    end
+    _debug('[Combat] Preset → %s (%s)', name, preset.label) 
 end)
 
 -- ── Request preset on spawn ───────────────────────────────────────────────────
