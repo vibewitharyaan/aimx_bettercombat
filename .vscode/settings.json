@@ -29,6 +29,8 @@
     "discordCfg",
     "MySQL",
     "_warn",
-    "combatState"
+    "combatState",
+    "api",
+    "recoil"
   ]
 }

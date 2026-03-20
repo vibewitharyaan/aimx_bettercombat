@@ -1,5 +1,3 @@
--- Recoil system. Started and stopped by cl_main via recoil.start() / recoil.stop().
--- Loop is completely dormant when no weapon is held.
 recoil = {}
 
 local KICK_SPEED  = 8.0  -- degrees per second the queued kick drains into camera rotation
