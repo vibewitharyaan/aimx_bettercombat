@@ -1,5 +1,3 @@
--- Per-weapon damage and recoil. See docs/README.md for full field reference.
-
 config.weapons = {
 
     -- PISTOLS

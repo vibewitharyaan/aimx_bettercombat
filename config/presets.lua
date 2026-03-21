@@ -1,5 +1,3 @@
--- Recoil presets. See docs/README.md for full field reference.
-
 config.presets = {
 
     default = {

@@ -1,4 +1,3 @@
--- Live recoil and damage tuner. Opened via /tuner (server validates ACE first).
 local MENU_ID = 'better_combat_tuner'
 
 -- Shallow-clones weapon data so config tables are never mutated
