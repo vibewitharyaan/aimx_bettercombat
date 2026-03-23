@@ -1,13 +1,13 @@
-config = {}
+config               = {}
 
-config.debug = {
+config.debug         = {
     code = false,
 }
 
-config.mode          = 'single'
+config.mode          = 'multi'
 config.defaultPreset = 'default'
 
-config.tuner = {
+config.tuner         = {
     command    = 'tuner',
     permission = 'group.admin',
 }
@@ -24,7 +24,7 @@ local function getSource(level)
     for part in info.short_src:gmatch('[^/\\]+') do parts[#parts + 1] = part end
     local display = #parts > 1
         and parts[#parts - 1] .. '/' .. parts[#parts]:gsub('%.lua$', '')
-        or  parts[1]:gsub('%.lua$', '')
+        or parts[1]:gsub('%.lua$', '')
     return ('[%s:%d] '):format(display, info.currentline)
 end
 
@@ -48,9 +48,12 @@ local function log(enabled, color, label, ...)
 end
 
 function _debug(...) log(config.debug.code, '2', 'DEBUG', ...) end
+
 function _error(...) log(true, '1', 'ERROR', ...) end
-function _warn(...)  log(true, '3', 'WARN',  ...) end
-function _info(...)  log(true, '6', 'INFO',  ...) end
+
+function _warn(...) log(true, '3', 'WARN', ...) end
+
+function _info(...) log(true, '6', 'INFO', ...) end
 
 function pname(src)
     if IsDuplicityVersion() then
